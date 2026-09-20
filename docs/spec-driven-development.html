@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec-driven development — Faggruppe Dataplattform</title>
+
+<!--
+  Fagkveld: Spec-driven development
+  Miles AS · Faggruppe Dataplattform
+  8 slides · ca. 17 minutter · norsk bokmål
+
+  Navigasjon:  → ↓ mellomrom PageDown = neste
+               ← ↑ Backspace PageUp   = forrige
+               Home / End              = første / siste
+               F                       = fullskjerm
+               Deep-link: #4 åpner slide 4
+
+  Designsystem: Miles (krem #fbf0e5 / burgunder #450d21 / rød #ff303b /
+  gul #ffd9a1). Typografi: Gelica (hovedfont) + DM Sans (sekundær).
+  Gelica er en lisensiert font og ligger ikke på Google Fonts — legg
+  fontfilene i ./fonts/ og slå på @font-face-blokken nedenfor. Uten den
+  faller decket tilbake på Georgia, slik designsystemet foreskriver.
+
+  Speaker notes ligger som HTML-kommentarer rett under hver <section>.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600&display=swap" rel="stylesheet">
+
+<style>
+/* ---------------------------------------------------------------
+   Gelica — fjern kommentaren når fontfilene ligger i ./fonts/
+   ---------------------------------------------------------------
+@font-face { font-family:"Gelica"; src:url("./fonts/Gelica-Regular.woff2") format("woff2"); font-weight:400; font-style:normal; font-display:swap; }
+@font-face { font-family:"Gelica"; src:url("./fonts/Gelica-Medium.woff2")  format("woff2"); font-weight:500; font-style:normal; font-display:swap; }
+*/
+
+:root{
+  --krem:#fbf0e5;
+  --burgunder:#450d21;
+  --red:#ff303b;
+  --gul:#ffd9a1;
+  --white:#ffffff;
+  --serif:"Gelica", Georgia, "Times New Roman", serif;
+  --sans:"DM Sans", Arial, Helvetica, sans-serif;
+  --ease:cubic-bezier(.25,1,.5,1);
+  --shadow-md:0 4px 16px rgba(69,13,33,.10);
+  --shadow-lg:0 8px 32px rgba(69,13,33,.14);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--burgunder);
+  overflow:hidden;
+  font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;
+}
+
+#stage{
+  position:absolute;
+  left:50%; top:50%;
+  width:1920px; height:1080px;
+  transform-origin:center center;
+}
+
+.slide{
+  position:absolute; inset:0;
+  padding:128px 128px 160px;
+  display:flex; flex-direction:column;
+  background:var(--krem);
+  color:var(--burgunder);
+  font-family:var(--serif);
+  opacity:0; visibility:hidden;
+  transform:translateY(16px);
+  transition:opacity .24s var(--ease), transform .24s var(--ease), visibility 0s linear .24s;
+}
+.slide.is-active{
+  opacity:1; visibility:visible;
+  transform:none;
+  transition:opacity .24s var(--ease), transform .24s var(--ease), visibility 0s;
+}
+.slide.dark{background:var(--burgunder); color:var(--krem)}
+
+h1,h2,h3,p,ul,li{margin:0}
+
+/* --- typografi ------------------------------------------------ */
+.kicker{
+  font-family:var(--serif); font-size:30px; font-weight:400;
+  color:var(--red); letter-spacing:.01em;
+}
+.dark .kicker{color:var(--gul)}
+
+h1{font-family:var(--serif); font-weight:400; font-size:160px; line-height:1.02; letter-spacing:-.015em}
+h2{font-family:var(--serif); font-weight:400; font-size:96px;  line-height:1.08; letter-spacing:-.01em}
+.huge{font-size:200px; line-height:1.0; letter-spacing:-.02em}
+
+.lead{font-family:var(--serif); font-size:44px; line-height:1.35}
+.note{font-family:var(--sans); font-size:34px; line-height:1.4; color:rgba(69,13,33,.72)}
+.dark .note{color:rgba(251,240,229,.75)}
+
+.em{color:var(--red)}
+.dark .em{color:var(--gul)}
+
+/* --- chrome: logo + slidenummer ------------------------------- */
+.mark{position:absolute; right:128px; top:73px; width:143px; height:44px; color:var(--red)}
+.dark .mark{color:var(--krem)}
+.mark svg{width:100%; height:100%; display:block}
+
+.pageno{
+  position:absolute; right:128px; bottom:64px;
+  font-family:var(--sans); font-size:24px; font-weight:400;
+  color:rgba(69,13,33,.55); letter-spacing:.06em;
+}
+.dark .pageno{color:rgba(251,240,229,.55)}
+
+/* --- slide 1 --------------------------------------------------- */
+.title-foot{position:absolute; left:128px; right:128px; bottom:96px; display:flex; align-items:flex-end; justify-content:space-between}
+.title-mark{width:480px; color:var(--red)}
+.title-mark svg{width:100%; height:auto; display:block}
+.byline{font-family:var(--sans); font-size:28px; color:rgba(69,13,33,.65); text-align:right; line-height:1.5}
+
+/* --- kort ------------------------------------------------------ */
+.cards{display:flex; gap:40px; align-items:stretch}
+.card{
+  flex:1; background:var(--white); border-radius:8px; padding:40px 32px;
+  box-shadow:var(--shadow-md);
+  display:flex; flex-direction:column; justify-content:space-between;
+}
+.card .num{font-family:var(--sans); font-size:64px; font-weight:600; color:var(--red); line-height:1}
+.card .word{font-family:var(--serif); font-size:52px; font-weight:500; line-height:1.1}
+
+/* --- slide 2: fem filer --------------------------------------- */
+.files{display:flex; gap:32px; align-items:stretch}
+.file{
+  flex:1; background:var(--white); border-radius:8px; padding:36px 28px 32px;
+  box-shadow:var(--shadow-md);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:44px;
+}
+.file .arrow{width:132px; height:132px; color:var(--burgunder)}
+.file .arrow.red{color:var(--red)}
+.file .fname{font-family:var(--sans); font-size:23px; font-weight:600; line-height:1.35; color:rgba(69,13,33,.85); text-align:center}
+
+/* --- slide 3: før / etter ------------------------------------- */
+.flow{display:flex; flex-direction:column; gap:72px}
+.flow-row{display:flex; align-items:center; gap:48px}
+.flow-label{
+  width:150px; flex:none;
+  font-family:var(--sans); font-size:30px; font-weight:600;
+  color:rgba(69,13,33,.55); letter-spacing:.06em;
+}
+.chain{display:flex; align-items:center; gap:28px}
+.chip{
+  background:var(--white); border-radius:8px; padding:26px 46px;
+  font-family:var(--serif); font-size:52px; line-height:1;
+  box-shadow:var(--shadow-md);
+}
+.chip.key{border:2px solid var(--red); box-shadow:var(--shadow-lg)}
+.arrw{font-family:var(--sans); font-size:44px; color:rgba(69,13,33,.45); line-height:1}
+.chipwrap{display:flex; flex-direction:column; align-items:center; gap:14px}
+.caption{font-family:var(--sans); font-size:26px; color:rgba(69,13,33,.6)}
+.caption.red{color:var(--red); font-weight:600}
+.ghost{
+  border:2px dashed rgba(69,13,33,.35); border-radius:8px; padding:24px 42px;
+  font-family:var(--serif); font-size:44px; color:rgba(69,13,33,.38);
+}
+
+/* --- slide 5: vektskål ---------------------------------------- */
+.cost{display:flex; align-items:center; gap:96px; flex:1}
+.cost-words{display:flex; flex-direction:column; gap:28px}
+.cost-words span{font-family:var(--serif); font-size:96px; font-weight:400; line-height:1.05}
+.scale-fig{flex:1; display:flex; justify-content:center}
+.scale-fig svg{width:100%; max-width:860px; height:auto}
+
+/* --- slide 6: landskapet -------------------------------------- */
+.land{position:relative; flex:1}
+.axis-label{
+  position:absolute; font-family:var(--sans); font-size:28px; font-weight:400;
+  color:rgba(69,13,33,.6); top:352px;
+}
+.tool{
+  position:absolute; top:150px; transform:translateX(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:0;
+}
+.tool .pill{
+  background:var(--white); border:2px solid var(--burgunder); border-radius:300px;
+  padding:18px 40px; font-family:var(--sans); font-size:40px; font-weight:600;
+  white-space:nowrap;
+}
+.tool .stem{width:2px; height:82px; background:rgba(69,13,33,.45)}
+.tool .dot{width:18px; height:18px; border-radius:300px; background:var(--burgunder)}
+
+.agentos{
+  position:absolute; left:756px; top:414px; width:908px;
+  border:2px dashed var(--red); border-radius:8px; background:var(--white);
+  padding:28px 36px; display:flex; align-items:center; gap:32px;
+}
+.agentos .back{width:72px; height:72px; flex:none; color:var(--red)}
+.agentos h3{font-family:var(--serif); font-size:52px; font-weight:500; line-height:1.1}
+.agentos p{font-family:var(--sans); font-size:28px; line-height:1.35; color:rgba(69,13,33,.72); margin-top:8px}
+.offaxis{
+  position:absolute; left:756px; top:374px;
+  font-family:var(--sans); font-size:26px; font-weight:600; color:var(--red);
+}
+
+/* --- slide 8: kurver ------------------------------------------ */
+.curves{flex:1; display:flex; align-items:center; justify-content:center}
+.curves svg{width:100%; max-width:1440px; height:auto}
+.closing{
+  position:absolute; left:128px; bottom:64px;
+  font-family:var(--serif); font-size:44px; color:var(--red);
+}
+
+/* --- utskrift / PDF ------------------------------------------- */
+@media print{
+  @page{size:1920px 1080px; margin:0}
+  body{background:var(--krem); overflow:visible}
+  #stage{position:static; width:auto; height:auto; transform:none}
+  .slide{
+    position:relative; inset:auto; width:1920px; height:1080px;
+    opacity:1; visibility:visible; transform:none;
+    break-after:page; page-break-after:always;
+  }
+  .card,.file,.chip,.agentos{box-shadow:none; border:1px solid rgba(69,13,33,.15)}
+}
+</style>
+</head>
+
+<body>
+
+<!-- Miles-ordmerke, fra designsystemet (assets/logos/miles-wordmark-red.svg).
+     Tegnet én gang, farges per slide via currentColor. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="miles" viewBox="0 0 620.32 193.08">
+    <path fill="currentColor" d="M613.09 123.11 613.09 123.09C608.38 117.84 601.95 113.79 593.96 111.04 586.25 108.34 577.19 105.93 567.06 103.88 562.66 102.96 558.69 101.99 555.24 101 554.36 100.74 553.48 100.48 552.69 100.24 552.28 100.1 551.9 99.96 551.5 99.81L551.2 99.7C546.83 97.88 544.03 94.9 542.89 90.85 541.76 86.88 542.75 82.35 545.53 78.76 547.65 76.01 551.59 72.63 558.2 72.17 572.34 71.64 580 83.67 580.75 91.9L580.95 94.18 615.78 94.38 615.37 91.49C613.48 78.36 607.59 67.93 597.86 60.47 588.28 53.13 575.22 49.4 558.77 49.4L558.74 49.4C547.06 49.48 536.98 51.44 528.8 55.23 520.43 59.12 513.96 64.41 509.59 70.93 505.17 77.47 502.96 85.01 503 93.34 503.04 100.27 504.6 106.16 507.64 110.84 510.65 115.48 514.71 119.33 519.72 122.28 524.58 125.12 530.17 127.5 536.33 129.35 542.2 131.11 548.47 132.64 554.93 133.88 558.84 134.69 562.45 135.54 565.64 136.39 566.57 136.67 574.81 139.3 577.9 145.48 579.37 148.43 580.06 151.97 578.67 155.75 577.37 159.29 574.48 162.13 571.74 163.97 568.95 165.84 565.67 166.91 562.04 167.16 561.73 167.16 561.42 167.17 561.11 167.17 545.98 167.17 538.6 154.64 537.5 146.57L537.35 145.48 499.38 145.48 499.54 146.88C500.47 155.27 503.49 162.92 508.51 169.63 513.8 176.68 521.19 182.26 530.44 186.22 539.43 190.07 550.16 192.02 562.35 192.02L562.74 192.02C574.3 191.98 584.5 190.03 593.06 186.2 601.65 182.36 608.43 176.92 613.22 170.01 617.99 163.04 620.38 155.05 620.33 146.27 620.29 136.31 617.86 128.52 613.11 123.11Z"/>
+    <path fill="currentColor" d="M481.09 82.43C475.45 72.34 467.47 64.25 457.38 58.38 447.39 52.53 435.56 49.56 421.92 49.56 408.11 49.64 395.82 52.85 385.39 59.07 374.86 65.33 366.64 74.03 360.94 84.93 355.26 95.77 352.42 108.4 352.5 122.49 352.54 136.21 355.54 148.5 361.42 159.02 367.37 169.54 375.71 177.81 386.22 183.57 396.66 189.3 408.69 192.2 421.99 192.2L422.54 192.2C433.04 192.16 442.76 190.12 451.45 186.13 459.97 182.2 467.33 176.7 473.33 169.78 479.09 163.09 483.29 155.46 485.82 147.11L486.31 145.48 446.71 145.48 446.44 146.39C443.41 156.67 436.4 161.97 424.43 163.05 405.08 163.88 394.22 147.85 392.18 132.2L488.84 131.76 489.15 129.6C489.48 127.2 489.65 124.9 489.65 122.58L489.61 116.73C489.57 104.08 486.7 92.55 481.09 82.45ZM394.38 108.05C394.04 99.13 397.36 89.09 403.02 82.17 407.77 76.36 413.82 72.96 420.43 72.35 440.54 71.51 448.29 93.26 450.24 108.05L394.39 108.05Z"/>
+    <path fill="currentColor" d="M250.86 2.62 250.72 2.62C244.53 2.64 239.34 4.68 235.3 8.67 231.25 12.66 229.21 17.77 229.23 23.84 229.25 29.91 231.34 35 235.42 38.96 239.46 42.88 244.62 44.87 250.74 44.87L250.88 44.87C257.22 44.85 262.49 42.81 266.54 38.82 270.59 34.83 272.63 29.73 272.61 23.65 272.59 17.58 270.5 12.49 266.42 8.53 262.37 4.61 257.14 2.63 250.86 2.63Z"/>
+    <path fill="currentColor" d="M161.31 0.91C144.92 52.27 118.64 94.06 102.7 94.06 86.76 94.06 60.53 52.27 44.14 0.91L43.86 0.03 0 0 0 193.04 39.16 193.04 39.16 83.83C59.56 114.68 80.91 130.31 102.74 130.31L102.74 130.31C124.49 130.31 145.83 114.69 166.23 83.87L166.23 193.04 205.39 193.04 205.39 0 161.57 0.03 161.29 0.91Z"/>
+    <rect fill="currentColor" x="231.34" y="60.32" width="39.16" height="132.76"/>
+    <rect fill="currentColor" x="296.71" y="0.07" width="39.16" height="193.01"/>
+  </symbol>
+
+  <symbol id="arrow" viewBox="0 0 100 100">
+    <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 50 H74"/><path d="M56 32 76 50 56 68"/>
+    </g>
+  </symbol>
+</svg>
+
+
+<div id="stage">
+
+<!-- ============================ 1 · TITTEL ============================ -->
+<section class="slide" id="s1">
+  <p class="kicker">Fagkveld · Faggruppe Dataplattform</p>
+  <div style="flex:1; display:flex; flex-direction:column; justify-content:center">
+    <h1><span class="em">Spec-driven</span><br>development</h1>
+  </div>
+  <div class="title-foot">
+    <div class="title-mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
+    <p class="byline">Steffen Ekeberg Tran-Bråten<br>24. September 2026</p>
+  </div>
+</section>
+<!--
+SPEAKER NOTES · slide 1 · ca. 45 sek
+
+Kort ramme, ikke oppvarming. Alle her bruker KI-verktøy daglig, så hopp over
+"hva er en agent".
+
+Si: "Spec-driven development er ikke et nytt verktøy, det er et skifte i hva
+som er sannheten i prosjektet. Jeg bruker 15 minutter på hva det er, hva det
+koster og hva jeg selv opplevde. Så gir jeg dere en påstand jeg vil at dere
+skal prøve å rive ned i kveld."
+
+Sett forventningen: siste slide er et eksperiment, ikke en konklusjon.
+-->
+
+
+<!-- ============================ 2 · PROBLEMET ========================= -->
+<section class="slide" id="s2">
+  <div class="mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
+  <h2>Fem utviklere, fem <span class="em">lokale</span> oppsett</h2>
+
+  <div style="flex:1; display:flex; align-items:center; margin-top:56px">
+  <div class="files" style="width:100%; height:320px">
+    <div class="file">
+      <svg class="arrow" style="transform:rotate(-42deg)"><use href="#arrow"/></svg>
+      <span class="fname">~/.claude/<br>CLAUDE.md</span>
+    </div>
+    <div class="file">
+      <svg class="arrow" style="transform:rotate(18deg)"><use href="#arrow"/></svg>
+      <span class="fname">CLAUDE.local.md</span>
+    </div>
+    <div class="file">
+      <svg class="arrow red" style="transform:rotate(-8deg)"><use href="#arrow"/></svg>
+      <span class="fname">~/.claude/skills/</span>
+    </div>
+    <div class="file">
+      <svg class="arrow" style="transform:rotate(58deg)"><use href="#arrow"/></svg>
+      <span class="fname">~/.cursor/rules</span>
+    </div>
+    <div class="file">
+      <svg class="arrow" style="transform:rotate(-68deg)"><use href="#arrow"/></svg>
+      <span class="fname">egne prompter</span>
+    </div>
+  </div>
+  </div>
+
+  <p class="note" style="margin-top:56px">Ingenting av dette ligger i repoet.</p>
+  <div class="pageno">02 / 08</div>
+</section>
+<!--
+SPEAKER NOTES · slide 2 · ca. 2 min
+
+VIKTIG PRESISERING — ikke si at CLAUDE.md ikke kan deles. Den som ligger i
+repoet er jo nettopp delt: den er sjekket inn, den går gjennom review, og alle
+på prosjektet får den. Det samme gjelder AGENTS.md og prosjektets egne skills.
+
+Poenget er det som IKKE ligger der. Ved siden av den delte fila har hver av oss
+et personlig lag: ~/.claude/CLAUDE.md som gjelder på tvers av alle prosjektene
+mine, CLAUDE.local.md som står i .gitignore, egne skills i hjemmekatalogen,
+regler i et annet verktøy enn det du bruker, og vaner som aldri er skrevet ned
+i det hele tatt.
+
+Spør med håndsopprekning: "Hvem har noe liggende i ~/.claude?" Mange hender.
+"Hvem vet hva som står i sidemannens?" Ingen.
+
+Tre konsekvenser å nevne raskt:
+  1. Samme repo gir ulikt resultat avhengig av hvem som kjører agenten.
+  2. Det lokale laget går aldri gjennom review.
+  3. Går jeg av prosjektet, forsvinner det med meg.
+
+Nyansen å lande: det delte laget finnes allerede, men det er tynt. Det er
+derfor vi trenger noe mer enn en regelfil — vi trenger en spec.
+
+Ikke bruk mer enn to minutter. Dette er oppsettet, ikke poenget.
+-->
+
+
+<!-- ============================ 3 · SKIFTET =========================== -->
+<section class="slide" id="s3">
+  <div class="mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
+  <h2>Spesifikasjonen er <span class="em">sannheten</span></h2>
+
+  <div class="flow" style="flex:1; justify-content:center">
+    <div class="flow-row">
+      <div class="flow-label">Før</div>
+      <div class="chain">
+        <span class="chip">Prompt</span>
+        <span class="arrw">&#8594;</span>
+        <span class="chip">Kode</span>
+      </div>
+      <div class="chipwrap" style="margin-left:56px">
+        <span class="ghost">chat-historikk</span>
+        <span class="caption">forsvinner</span>
+      </div>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-label">Etter</div>
+      <div class="chain">
+        <div class="chipwrap">
+          <span class="chip key">Spec</span>
+          <span class="caption red">blir liggende</span>
+        </div>
+        <span class="arrw" style="align-self:flex-start; margin-top:38px">&#8594;</span>
+        <span class="chip" style="align-self:flex-start">Agent</span>
+        <span class="arrw" style="align-self:flex-start; margin-top:38px">&#8594;</span>
+        <span class="chip" style="align-self:flex-start">Kode</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pageno">03 / 08</div>
+</section>
+<!--
+SPEAKER NOTES · slide 3 · ca. 2,5 min
+
+Kjernen i hele kvelden. Bruk tid her.
+
+Før: prompten er kilden. Den lever i en chat-tråd, den er ikke versjonert,
+ingen andre ser den, og i morgen finnes den ikke. Koden er det eneste som
+overlever — og koden forteller hva, ikke hvorfor.
+
+Etter: spesifikasjonen er kilden. Den ligger i repoet, den går gjennom review
+som all annen kode, og agenten er en oversetter fra spec til implementasjon.
+Prompten blir et engangsverktøy, ikke et artefakt.
+
+Den viktigste setningen å si høyt: "Hvis du sletter all koden og beholder
+spec'en, kan du bygge den opp igjen. Hvis du sletter spec'en og beholder
+koden, har du mistet intensjonen."
+
+Vær ærlig på at dette ikke er nytt som idé — det er kravspesifikasjon på nytt.
+Det nye er at spec'en nå har en leser som faktisk implementerer den.
+
+Forvent innvending: "Er ikke dette bare foss igjen?" Svar: nei, fordi
+iterasjonen er sekunder, ikke uker. Du skriver spec, kjører, leser resultat,
+retter spec. Løkka er kort nok til at det fortsatt er smidig.
+-->
+
+
+<!-- ============================ 4 · GEVINSTEN ========================= -->
+<section class="slide" id="s4">
+  <div class="mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
+  <h2>Hva du <span class="em">vinner</span></h2>
+
+  <div style="flex:1; display:flex; align-items:center; margin-top:56px">
+    <div class="cards" style="width:100%; height:290px">
+      <div class="card"><span class="num">01</span><span class="word">Alignment</span></div>
+      <div class="card"><span class="num">02</span><span class="word">Harness</span></div>
+      <div class="card"><span class="num">03</span><span class="word">Sporbarhet</span></div>
+      <div class="card"><span class="num">04</span><span class="word">Gjenbruk</span></div>
+    </div>
+  </div>
+
+  <div class="pageno">04 / 08</div>
+</section>
+<!--
+SPEAKER NOTES · slide 4 · ca. 2,5 min
+
+Fire ord, ett forklart om gangen. Dette er den entusiastiske sliden — lov å
+selge her, for neste slide tar det tilbake.
+
+Alignment — teamet og agenten leser det samme dokumentet. Diskusjonen flyttes
+fra "hvorfor gjorde agenten din det sånn" til "er spec'en riktig". Uenighet
+oppstår før implementasjon, ikke i review.
+
+Harness — spec'en fungerer som et gjerde rundt agenten. Den vet hva som er
+innenfor oppdraget, og like viktig: hva som er utenfor. Dette er det som
+faktisk demper scope-drift i lange agentkjøringer.
+
+Sporbarhet — du kan svare på "hvorfor er denne koden slik" et halvår senere.
+Spec'en ligger i git ved siden av koden, med samme historikk. For oss som
+konsulenter er dette også en leveranse i seg selv: kunden sitter igjen med
+intensjonen, ikke bare artefaktet.
+
+Gjenbruk — en spec kan leses av et annet verktøy, av en ny kollega, eller av
+en agent om to år. En chat-tråd kan ikke det.
+
+Hvis du må kutte tid: kutt harness, behold alignment og gjenbruk.
+-->
+
+
+<!-- ============================ 5 · KOSTNADEN ========================= -->
+<section class="slide dark" id="s5">
+  <div class="mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
+  <h2>Hva det <span class="em">koster</span></h2>
+
+  <div class="cost" style="margin-top:56px">
+    <div class="cost-words">
+      <span>Seremoni</span>
+      <span>Tokens</span>
+      <span>Tid</span>
+    </div>
+
+    <div class="scale-fig">
+      <svg viewBox="0 0 720 520" aria-label="Vektskål: tre små lodd på den ene siden, ett stort på den andre">
+        <g fill="none" stroke="#fbf0e5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M360 170 V470"/>
+          <path d="M262 470 H458"/>
+          <path d="M111 192 L609 148"/>
+          <path d="M111 192 V296"/>
+          <path d="M609 148 V252"/>
+          <path d="M41 296 Q111 370 181 296"/>
+          <path d="M539 252 Q609 326 679 252"/>
+        </g>
+        <polygon points="360,156 342,190 378,190" fill="#fbf0e5"/>
+        <circle cx="61"  cy="272" r="25" fill="#fbf0e5"/>
+        <circle cx="111" cy="266" r="25" fill="#fbf0e5"/>
+        <circle cx="161" cy="272" r="25" fill="#fbf0e5"/>
+        <circle cx="609" cy="200" r="52" fill="#ffd9a1"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="pageno">05 / 08</div>
+</section>
+<!--
+SPEAKER NOTES · slide 5 · ca. 2,5 min
+
+Bytt tone her. Forrige slide var salg, denne er regnskap. Si det gjerne høyt:
+"Så skal jeg ta tilbake litt av det jeg nettopp sa."
+
+Seremoni — rammeverkene har faser, maler, roller og filstrukturer. På en liten
+endring er det tyngre å skrive spec'en enn å gjøre jobben. Terskelen for "bare
+fiks det" blir høy, og da omgår folk prosessen. Det er den virkelige risikoen:
+ikke at seremonien koster, men at den blir hoppet over.
+
+Tokens — du betaler for å generere spec, planer og oppgavelister før en eneste
+linje kode. På et lite oppdrag kan forarbeidet koste mer enn selve koden.
+Ha gjerne et konkret tall klart fra din egen bruk hvis du har det.
+
+Tid — første commit kommer senere. Merkbart senere. For en prototype du skal
+kaste om tre dager er det feil investering.
+
+Vær tydelig på hvor grensen går: SDD lønner seg når kravene er uklare eller
+kommer til å endre seg, og når flere skal jobbe i samme kode over tid. Det
+lønner seg ikke på en engangsscript eller en spike.
+
+Figuren: tre små lodd mot ett stort. Ikke påstå at den tipper — det er nettopp
+det vi skal teste på siste slide.
+-->
+
+
+<!-- ============================ 6 · LANDSKAPET ======================== -->
+<section class="slide" id="s6">
+  <div class="mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
+  <h2>Hvor <span class="em">verktøyene</span> står</h2>
+
+  <div class="land" style="margin-top:56px">
+    <!-- aksen -->
+    <svg style="position:absolute; left:0; top:0; width:1664px; height:440px" viewBox="0 0 1664 440" aria-label="Akse fra lite seremoni til høy sporbarhet">
+      <defs>
+        <marker id="ax" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0 0 L10 5 L0 10 z" fill="rgba(69,13,33,.55)"/>
+        </marker>
+      </defs>
+      <line x1="40" y1="330" x2="1624" y2="330"
+            stroke="rgba(69,13,33,.55)" stroke-width="3" marker-end="url(#ax)"/>
+    </svg>
+
+    <div class="tool" style="left:190px"><div class="pill">OpenSpec</div><div class="stem"></div><div class="dot"></div></div>
+    <div class="tool" style="left:832px"><div class="pill">Spec Kit</div><div class="stem"></div><div class="dot"></div></div>
+    <div class="tool" style="left:1450px"><div class="pill">BMAD</div><div class="stem"></div><div class="dot"></div></div>
+
+    <div class="axis-label" style="left:40px">lite seremoni</div>
+    <div class="axis-label" style="right:40px; text-align:right">høy sporbarhet</div>
+
+    <div class="offaxis">utenfor aksen</div>
+    <div class="agentos">
+      <svg class="back" viewBox="0 0 100 100" style="transform:scaleX(-1)"><use href="#arrow"/></svg>
+      <div>
+        <h3>Agent OS</h3>
+        <p>Leser standardene som allerede finnes i koden din — ikke en blank spec.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pageno">06 / 08</div>
+</section>
+<!--
+SPEAKER NOTES · slide 6 · ca. 2,5 min
+
+Aksen er min egen inndeling, ikke en offisiell taksonomi. Si det.
+
+OpenSpec — lettest. Én spec-fil, minimal struktur, lav terskel. Nærmest
+"CLAUDE.md med disiplin". Bra når du vil prøve tanken uten å bygge prosess.
+
+Spec Kit — GitHub sitt. Faser: constitution, specify, plan, tasks, implement.
+Strukturert nok til å gi sporbarhet, løst nok til å ikke drukne et lite team.
+Dette er middelveien og sannsynligvis det de fleste bør starte med.
+
+BMAD — tyngst. Agentroller (analytiker, arkitekt, scrum master, utvikler) og
+en full dokumentkjede. Mye seremoni, men også mest etterprøvbarhet. Passer
+større, langvarige leveranser.
+
+SÅ — det viktige avviket. Agent OS hører ikke hjemme på denne aksen i det hele
+tatt, og det er derfor boksen står utenfor og pila peker motsatt vei.
+
+De tre andre går fra spec til kode: du skriver ned hva du vil ha, agenten
+bygger det. Agent OS går fra kode til standard: den leser kodebasen du
+allerede har, trekker ut mønstrene, konvensjonene og stilen som faktisk er der,
+og gjør dem til instruksjoner agenten skal følge videre.
+
+Hvorfor det betyr noe for oss: vi kommer nesten alltid inn i eksisterende
+kodebaser. En blank spec er en luksus vi sjelden har. Agent OS angriper
+problemet fra den enden vi faktisk står i.
+
+Ikke anbefal ett verktøy. Poenget er at valget avhenger av om du bygger nytt
+eller overtar noe.
+-->
+
+
+<!-- ============================ 7 · ERFARINGEN ======================== -->
+<section class="slide dark" id="s7">
+  <div class="mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
+  <div style="flex:1; display:flex; align-items:center">
+    <h2 class="huge">Fra virkeligheten</h2>
+  </div>
+  <div class="pageno">07 / 08</div>
+</section>
+<!--
+SPEAKER NOTES · slide 7 · ca. 3,5 min · SNAKKESLIDE
+
+Sliden er tom med vilje. Gå vekk fra skjermen. Dette er den delen folk husker.
+
+Dekk tre ting, i denne rekkefølgen:
+
+  1. SPEC'EN — hva jeg faktisk ga Agent OS, og hvor lang tid det tok å komme
+     dit. Vær konkret: hvilket prosjekt, hvilken standard den trakk ut.
+
+  2. RESULTATET — hva som kom ut, og hva som overrasket meg. Både det som var
+     bedre enn ventet og det som var skuffende.
+
+  3. DA NOE GIKK GALT — den viktigste delen. Hva brøt sammen, hvordan jeg
+     oppdaget det, og hva jeg gjorde. Ikke pynt på den.
+
+Avslutt med én setning som binder tilbake til slide 5: var kostnaden verdt det
+i akkurat dette tilfellet?
+-->
+
+
+<!-- ============================ 8 · HYPOTESEN ========================= -->
+<section class="slide" id="s8">
+  <div class="mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
+  <h2>Kveldens <span class="em">hypotese</span></h2>
+  <p class="note" style="margin-top:28px">Flere tokens, senere start — men tåler en kravendring bedre.</p>
+
+  <div class="curves">
+    <svg viewBox="0 0 1100 470" aria-label="To kurver som krysser hverandre etter en kravendring">
+      <g stroke="rgba(69,13,33,.35)" stroke-width="3" fill="none">
+        <path d="M90 40 V420 H1050"/>
+      </g>
+
+      <path d="M660 60 V420" stroke="#ff303b" stroke-width="3" stroke-dasharray="10 10" fill="none"/>
+      <text x="660" y="40" text-anchor="middle" font-family="DM Sans, Arial, sans-serif"
+            font-size="28" font-weight="600" fill="#ff303b">kravendring</text>
+
+      <path d="M90 372 C 190 236, 300 158, 430 144 C 560 130, 640 196, 760 252 C 860 298, 930 318, 1010 330"
+            fill="none" stroke="#450d21" stroke-width="7" stroke-linecap="round"/>
+      <path d="M90 412 C 230 408, 340 374, 430 314 C 560 234, 700 160, 1010 96"
+            fill="none" stroke="#ff303b" stroke-width="7" stroke-linecap="round"/>
+
+      <text x="1040" y="82" text-anchor="end" font-family="DM Sans, Arial, sans-serif"
+            font-size="32" font-weight="600" fill="#ff303b">Rammeverk</text>
+      <text x="1040" y="378" text-anchor="end" font-family="DM Sans, Arial, sans-serif"
+            font-size="32" font-weight="600" fill="#450d21">Ad hoc</text>
+
+      <text transform="rotate(-90 44 230)" x="44" y="230" text-anchor="middle"
+            font-family="DM Sans, Arial, sans-serif" font-size="26" fill="rgba(69,13,33,.6)">fremdrift</text>
+      <text x="1050" y="456" text-anchor="end"
+            font-family="DM Sans, Arial, sans-serif" font-size="26" fill="rgba(69,13,33,.6)">tid</text>
+    </svg>
+  </div>
+
+  <p class="closing">Motbevis den i kveld.</p>
+  <div class="pageno">08 / 08</div>
+</section>
+<!--
+SPEAKER NOTES · slide 8 · ca. 2 min + diskusjon
+
+Formuler den som et veddemål, ikke som en konklusjon. Ordrett forslag:
+
+"Påstanden min er: et spec-rammeverk bruker flere tokens og kommer senere i
+gang enn fri prompting — men når kravene endrer seg, tar det igjen forspranget
+og går forbi. Jeg tror på den. Jeg vil at dere skal rive den ned."
+
+Tre konkrete måter å angripe den på — gi dem gjerne til gruppene:
+  · Kryssingspunktet: hvor sent kommer det? Hvis det krever tre kravendringer
+    før det lønner seg, er det da relevant for våre oppdrag i det hele tatt?
+  · Gjelder det fortsatt når modellene blir bedre? Kanskje kontekstvinduet
+    spiser hele problemet om et år.
+  · Er "ad hoc" en stråmann? En erfaren utvikler med gode vaner er kanskje
+    ikke ad hoc i det hele tatt.
+
+Hvis noen har motdata fra eget prosjekt: la dem ta ordet. Det er kvelden.
+
+Avslutning: foreslå at vi tar samme påstand opp igjen om et halvår med data
+fra faktiske oppdrag i stedet for magefølelse.
+-->
+
+</div><!-- /#stage -->
+
+
+<script>
+(function () {
+  "use strict";
+
+  var stage  = document.getElementById("stage");
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var current = 0;
+
+  /* Skalerer 1920x1080-scenen til vinduet, uten å røre layouten. */
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    stage.style.transform = "translate(-50%, -50%) scale(" + s + ")";
+  }
+
+  function show(i, push) {
+    i = Math.max(0, Math.min(slides.length - 1, i));
+    if (slides[current]) slides[current].classList.remove("is-active");
+    slides[i].classList.add("is-active");
+    current = i;
+    /* Deep-link i adressefeltet. Feiler i sandkassede rammer
+       (about:srcdoc), og da skal navigasjonen fortsette som normalt. */
+    if (push !== false) {
+      try {
+        history.replaceState(null, "", "#" + (i + 1));
+      } catch (err) { /* ingen adresselinje å skrive til — ignoreres */ }
+    }
+  }
+
+  function next() { if (current < slides.length - 1) show(current + 1); }
+  function prev() { if (current > 0) show(current - 1); }
+
+  function fromHash() {
+    var h = "";
+    try { h = String(location.hash); } catch (err) { h = ""; }
+    var n = parseInt(h.replace("#", ""), 10);
+    return (isFinite(n) && n >= 1 && n <= slides.length) ? n - 1 : 0;
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch (e.key) {
+      case "ArrowRight": case "ArrowDown": case "PageDown": case " ": case "Enter":
+        e.preventDefault(); next(); break;
+      case "ArrowLeft": case "ArrowUp": case "PageUp": case "Backspace":
+        e.preventDefault(); prev(); break;
+      case "Home":
+        e.preventDefault(); show(0); break;
+      case "End":
+        e.preventDefault(); show(slides.length - 1); break;
+      case "f": case "F":
+        e.preventDefault();
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+        break;
+    }
+  });
+
+  window.addEventListener("resize", fit);
+  window.addEventListener("hashchange", function () { show(fromHash(), false); });
+
+  fit();
+  show(fromHash(), false);
+})();
+</script>
+
+</body>
+</html>
