@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Collates every track for the SDD evening.
 
-Reads metrics/timeline.json from each track branch and writes a table plus an
-HTML chart that can be projected. Each track declares in metrics/track.json
-whether it used an SDD framework, so runs with and without one can be told
-apart.
+Every track is a directory under spor/, and each one measures itself into its
+own spor/<name>/metrics/timeline.json. This reads all of them and writes a
+table plus an HTML chart that can be projected. Each track declares in its
+metrics/track.json whether it used an SDD framework, so runs with and without
+one can be told apart.
 
-    git fetch --all
     python metrics/compare.py
 
 Pass --split with a clock time to additionally break each track's numbers into
@@ -20,68 +20,51 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
 FIELDS = ("input", "cache_read", "cache_write", "output")
 COLORS = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea", "#0891b2"]
-BRANCH_PREFIXES = ("spor/", "track/")
+TRACKS_DIR = "spor"
 NO_FRAMEWORK = "ingen (fri prompting)"
 
 
-def find_track_branches() -> list[str]:
-    """Every remote branch under one of the track prefixes.
+def find_track_dirs(root: Path) -> list[Path]:
+    """Every track directory under spor/.
 
-    Returns:
-        Sorted, de-duplicated branch names.
-    """
-    output = subprocess.run(
-        ["git", "branch", "-r", "--format=%(refname:short)"],
-        capture_output=True, text=True, check=True,
-    ).stdout
-    branches = []
-    for line in output.splitlines():
-        branch = line.strip()
-        if any(p in branch for p in BRANCH_PREFIXES):
-            branches.append(branch)
-    return sorted(set(branches))
-
-
-def branch_track_name(branch: str) -> str:
-    """Strip the remote and the track prefix from a branch name.
+    A directory counts as a track when it holds metrics/track.json, so
+    scratch folders and stray files are ignored.
 
     Args:
-        branch: Full remote branch name, e.g. 'origin/spor/kiro'.
+        root: Repository root.
 
     Returns:
-        The bare track name, e.g. 'kiro'.
+        Track directories, sorted by name.
     """
-    for prefix in BRANCH_PREFIXES:
-        if prefix in branch:
-            return branch.split(prefix, 1)[1]
-    return branch
+    base = root / TRACKS_DIR
+    if not base.is_dir():
+        return []
+    return sorted(
+        d for d in base.iterdir()
+        if d.is_dir() and (d / "metrics" / "track.json").is_file()
+    )
 
 
-def load_timeline(branch: str) -> dict | None:
-    """Read metrics/timeline.json as committed on a branch.
+def load_timeline(track_dir: Path) -> dict | None:
+    """Read a track's metrics/timeline.json from disk.
 
     Args:
-        branch: Branch to read from.
+        track_dir: The track's directory under spor/.
 
     Returns:
         The parsed document, or None when it is missing or malformed.
     """
-    result = subprocess.run(
-        ["git", "show", f"{branch}:metrics/timeline.json"],
-        capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        return None
     try:
-        return json.loads(result.stdout)
-    except json.JSONDecodeError:
+        return json.loads(
+            (track_dir / "metrics" / "timeline.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
         return None
 
 
@@ -368,7 +351,7 @@ def render_html(tracks: list[dict], split: datetime | None) -> str:
 
 
 def main() -> int:
-    """Collate every track branch into a Markdown table and an HTML chart.
+    """Collate every track directory into a Markdown table and an HTML chart.
 
     Returns:
         0 on success, 1 when no track had usable data, 2 on bad arguments.
@@ -389,18 +372,27 @@ def main() -> int:
             print("Ugyldig tidspunkt.", file=sys.stderr)
             return 2
 
-    branches = find_track_branches()
-    if not branches:
-        print("Fant ingen spor-brancher. Kjørte du git fetch --all?", file=sys.stderr)
+    root = Path(__file__).resolve().parent.parent
+    track_dirs = find_track_dirs(root)
+    if not track_dirs:
+        print(
+            f"Fant ingen spor under {root / TRACKS_DIR}/. En mappe teller som "
+            f"spor når den har metrics/track.json.",
+            file=sys.stderr,
+        )
         return 1
 
     tracks = []
-    for branch in branches:
-        timeline = load_timeline(branch)
+    for track_dir in track_dirs:
+        timeline = load_timeline(track_dir)
         if not timeline:
-            print(f"  hopper over {branch}: ingen metrics/timeline.json", file=sys.stderr)
+            print(
+                f"  hopper over {track_dir.name}: ingen metrics/timeline.json "
+                f"(sporet har ikke blitt målt ennå)",
+                file=sys.stderr,
+            )
             continue
-        if result := analyse(branch_track_name(branch), timeline, split):
+        if result := analyse(track_dir.name, timeline, split):
             tracks.append(result)
 
     if not tracks:

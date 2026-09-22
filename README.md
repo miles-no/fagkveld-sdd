@@ -48,31 +48,43 @@ Avhengighetene er låst i `pyproject.toml` og `uv.lock`:
 Ruff er satt opp med linjelengde 100 og regelsettene `E`, `F`, `I`,
 `UP` og `B`.
 
-## Ett spor, én branch — og én katalog
+## Ett spor, én mappe
 
-Hvert spor jobber på sin egen branch ut fra `main`, med branchnavn på
-formen `spor/<navn>` (f.eks. `spor/kiro`). Sporene rører ikke `main`
-underveis. Det er disse branchene `metrics/compare.py` plukker opp når
-tokenbruken skal stilles side om side til slutt.
+Hvert spor har sin egen mappe under `spor/`, og jobber bare der:
 
-Hvert spor trenger også sin egen katalog, ikke bare sin egen branch:
-
-```bash
-git worktree add -b spor/<navn> ../spor-<navn> main
-cd ../spor-<navn>
+```
+spor/agent-os/     Agent OS
+spor/spec-kit/     Spec Kit
+spor/bmad/         BMAD
+spor/fri/          fri prompting
 ```
 
-`metrics/tokens.py` skiller sporene fra hverandre på katalogsti. To spor
-som kjører i samme katalog får tokenbruken blandet sammen, og tallene ser
-riktige ut selv om de ikke er det.
+**Start kodeassistenten fra sporets egen mappe**, ikke fra repo-roten:
 
-Hvert spor merker seg selv i `metrics/track.json`, etter mønsteret i
-[`metrics/track.example.json`](metrics/track.example.json):
+```bash
+cd spor/agent-os
+claude
+```
+
+Det er ikke en formalitet. `metrics/tokens.py` skiller sporene fra
+hverandre på katalogsti. Startes to spor fra samme mappe, havner
+tokenbruken deres i samme måling, og tallene ser riktige ut selv om de
+ikke er det.
+
+Hver sporkatalog har sin egen `.claude/settings.json` med Stop-hooken, sin
+egen `Makefile`, og sin egen `metrics/`. Avhengighetene er felles: `uv`
+finner `pyproject.toml` i repo-roten fra en undermappe, så alle sporene
+deler samme `.venv` og dermed nøyaktig samme versjoner.
+
+### Merking
+
+`spor/<navn>/metrics/track.json` sier hvem sporet er:
 
 ```json
 {
-  "name": "kiro",
-  "framework": "Kiro"
+  "name": "agent-os",
+  "framework": "Agent OS",
+  "assistant": "claude-code"
 }
 ```
 
@@ -81,29 +93,37 @@ dette feltet sammenligningen bruker til å skille de to gruppene fra
 hverandre. `assistant` er valgfri og er `claude-code` som standard.
 
 **Uten `track.json` måler `tokens.py` ingenting.** Det er med vilje: da
-skriver den heller ikke målefiler i katalogen du står i, og `main` holder
-seg ren. Tidsserien bygges opp fra transkripsjonene hver gang, så du mister
-ingen historikk på å opprette filen litt ut i løpet.
+skriver den heller ikke målefiler i mappen du står i, så repo-roten holder
+seg ren. Tidsserien bygges opp fra transkripsjonene hver gang, så du
+mister ingen historikk på å opprette filen litt ut i løpet.
 
 ## Måleverktøyet
 
-`metrics/` inneholder verktøyet som måler tokenbruken:
-
 | Fil | Innhold |
 | --- | --- |
-| `metrics/tokens.py` | Leser Claude Code-transkripsjoner og skriver `timeline.json` + `summary.md` |
-| `metrics/compare.py` | Leser `timeline.json` fra hver spor-branch og skriver `comparison.md`/`.html` |
-| `metrics/track.json` | Sporets navn, rammeverk og assistent |
+| `metrics/tokens.py` | Leser transkripsjoner og skriver sporets `timeline.json` + `summary.md` |
+| `metrics/compare.py` | Leser alle sporenes `timeline.json` og skriver `comparison.md`/`.html` |
+| `spor/<navn>/metrics/track.json` | Sporets navn, rammeverk og assistent |
 
-`tokens.py`, `compare.py` og `track.example.json` er verktøy som ligger på
-`main` og arves av alle spor. `track.json`, `timeline.json` og `summary.md`
-er **data per spor**: de oppstår i sporets egen katalog og committes på
-sporets egen branch. Det er slik `compare.py` finner dem igjen — den leser
-`git show <branch>:metrics/timeline.json` for hver spor-branch.
+Verktøyet ligger ett sted, i `metrics/` i repo-roten, og deles av alle
+sporene — Stop-hooken i hvert spor kaller `../../metrics/tokens.py`.
+Måledataene er derimot per spor og havner i `spor/<navn>/metrics/`.
 
-Kun den samlede `comparison.md`/`.html` er gitignorert, siden den genereres
-på nytt ved behov.
+Til slutt, fra repo-roten:
 
-`.claude/settings.json` har en Stop-hook som kjører
-`metrics/tokens.py --quiet`, slik at målingen oppdaterer seg selv.
+```bash
+python3 metrics/compare.py
+```
+
+Den leser `spor/*/metrics/timeline.json`, skriver en tabell med en kolonne
+for rammeverk, og en graf der spor uten rammeverk tegnes stiplet.
+`--split <ISO-tid>` deler i tillegg tallene i før og etter et klokkeslett.
+
+Sporenes `timeline.json`, `summary.md` og `track.json` committes som
+vanlige filer. Kun den samlede `comparison.md`/`.html` er gitignorert,
+siden den genereres på nytt ved behov.
+
+Målingen oppdaterer seg selv: `spor/<navn>/.claude/settings.json` har en
+Stop-hook som kjører etter hvert svar fra agenten.
+
 Presentasjonen ligger i `docs/`.

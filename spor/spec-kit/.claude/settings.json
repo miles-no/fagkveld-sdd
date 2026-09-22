@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "(python3 ../../metrics/tokens.py --quiet &) 2>/dev/null; exit 0",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
