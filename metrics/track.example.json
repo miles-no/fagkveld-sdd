@@ -1,0 +1,5 @@
+{
+  "name": "agent-os",
+  "framework": "Agent OS",
+  "assistant": "claude-code"
+}

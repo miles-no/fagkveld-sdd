@@ -31,6 +31,43 @@ SHORT_NAMES = {
 }
 FIELDS = tuple(SHORT_NAMES.values())
 
+TRACK_FILE = "track.json"
+
+
+DEFAULT_ASSISTANT = "claude-code"
+
+
+def read_track(out: Path, repo_root: Path) -> tuple[dict, bool]:
+    """Read the track's identity from metrics/track.json.
+
+    The file is committed per track branch and is what separates a run that
+    used an SDD framework from one that did not. Without it the track is
+    still measured, but cannot be attributed.
+
+    Args:
+        out: Directory holding the metrics files.
+        repo_root: Used for the fallback name.
+
+    Returns:
+        The track's name, framework and assistant, and whether track.json
+        was actually found.
+    """
+    fallback = {
+        "name": repo_root.name,
+        "framework": None,
+        "assistant": DEFAULT_ASSISTANT,
+    }
+    try:
+        doc = json.loads((out / TRACK_FILE).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return fallback, False
+    framework = doc.get("framework")
+    return {
+        "name": str(doc.get("name") or repo_root.name),
+        "framework": str(framework) if framework else None,
+        "assistant": str(doc.get("assistant") or DEFAULT_ASSISTANT),
+    }, True
+
 
 def read_events(projects_dir: Path, repo_root: Path) -> list[dict]:
     """Every assistant message that belonged to this repo, sorted by time.
@@ -99,6 +136,36 @@ def read_events(projects_dir: Path, repo_root: Path) -> list[dict]:
     return events
 
 
+def claude_code_dir() -> Path:
+    """Where Claude Code keeps its session transcripts."""
+    return Path.home() / ".claude" / "projects"
+
+
+# Each assistant contributes one entry: a function giving its default
+# transcript directory, and a reader.
+#
+# A reader takes (transcripts_dir, repo_root) and returns a list of events,
+# sorted by time. Each event must carry:
+#
+#     time         ISO timestamp string
+#     session      session id, or None
+#     model        model name, or "unknown"
+#     input        prompt tokens NOT served from cache
+#     output       generated tokens
+#     cache_write  tokens written to cache (0 when the vendor has no such cost)
+#     cache_read   prompt tokens served from cache
+#
+# Only messages whose working directory lies under repo_root count, so a
+# track is never credited with another track's work.
+#
+# Adding an assistant means writing one reader and one line here. Note that
+# token counts are NOT comparable across vendors - see the warning in
+# compare.py.
+READERS = {
+    "claude-code": (claude_code_dir, read_events),
+}
+
+
 def build_timeline(events: list[dict]) -> tuple[list[dict], dict[str, int]]:
     """Attach a running sum, so the series can be cut at a given clock time.
 
@@ -130,12 +197,19 @@ def cache_hit_rate(total: dict[str, int]) -> float | None:
     return round(total["cache_read"] / denominator, 4) if denominator else None
 
 
-def write_summary(path: Path, track: str, events: list[dict], total: dict[str, int]) -> None:
+def write_summary(
+    path: Path,
+    track: str,
+    framework: str | None,
+    events: list[dict],
+    total: dict[str, int],
+) -> None:
     """Write the human-readable summary for a single track.
 
     Args:
         path: File to write.
         track: Name of the track being measured.
+        framework: SDD framework used, or None when the track prompted freely.
         events: Events in chronological order.
         total: Summed token counts per field.
     """
@@ -147,6 +221,7 @@ def write_summary(path: Path, track: str, events: list[dict], total: dict[str, i
     lines = [
         f"# Token usage - {track}",
         "",
+        f"Framework: {framework or 'none (free prompting)'}",
         f"Generated: {datetime.now(UTC).isoformat(timespec='seconds')}",
         f"First message: {first}",
         f"Last message: {last}",
@@ -181,19 +256,41 @@ def main() -> int:
     quiet = "--quiet" in sys.argv
 
     repo_root = Path(os.environ.get("SDD_REPO_ROOT", Path.cwd()))
-    projects_dir = Path(
-        os.environ.get("CLAUDE_PROJECTS_DIR", Path.home() / ".claude" / "projects")
-    )
     out = Path(os.environ.get("SDD_METRICS_DIR", repo_root / "metrics"))
     out.mkdir(parents=True, exist_ok=True)
 
-    if not projects_dir.is_dir():
-        if not quiet:
-            print(f"Could not find {projects_dir}.", file=sys.stderr)
-            print("Is Claude Code running locally?", file=sys.stderr)
+    track, found = read_track(out, repo_root)
+    assistant = track["assistant"]
+
+    if not found:
+        print(
+            f"No {out / TRACK_FILE} - this directory is not a track, so nothing "
+            f"was written. Create the file (see track.example.json) and run "
+            f"again; the series is rebuilt from the transcripts every time, so "
+            f"no history is lost by waiting.",
+            file=sys.stderr,
+        )
+        return 0
+
+    if assistant not in READERS:
+        print(
+            f"Unknown assistant {assistant!r} in {out / TRACK_FILE}. "
+            f"Supported: {', '.join(sorted(READERS))}. "
+            f"Adding one means writing a reader and registering it in READERS.",
+            file=sys.stderr,
+        )
         return 1
 
-    events = read_events(projects_dir, repo_root)
+    default_dir, reader = READERS[assistant]
+    transcripts = Path(os.environ.get("SDD_TRANSCRIPTS_DIR", default_dir()))
+
+    if not transcripts.is_dir():
+        if not quiet:
+            print(f"Could not find {transcripts}.", file=sys.stderr)
+            print(f"Is {assistant} running locally?", file=sys.stderr)
+        return 1
+
+    events = reader(transcripts, repo_root)
     if not events:
         if not quiet:
             print(f"No messages with a cwd under {repo_root}.", file=sys.stderr)
@@ -203,17 +300,26 @@ def main() -> int:
 
     (out / "timeline.json").write_text(
         json.dumps(
-            {"track": repo_root.name, "repo_root": str(repo_root), "events": series},
+            {
+                "track": track["name"],
+                "framework": track["framework"],
+                "assistant": assistant,
+                "repo_root": str(repo_root),
+                "events": series,
+            },
             indent=2,
             ensure_ascii=False,
         ) + "\n",
         encoding="utf-8",
     )
-    write_summary(out / "summary.md", repo_root.name, events, total)
+    write_summary(out / "summary.md", track["name"], track["framework"], events, total)
 
     if not quiet:
         rate = cache_hit_rate(total)
         print(f"{len(events)} replies from the agent written to {out}")
+        print(f"  {'track':<12}: {track['name']}")
+        print(f"  {'framework':<12}: {track['framework'] or 'none (free prompting)'}")
+        print(f"  {'assistant':<12}: {assistant}")
         for field in FIELDS:
             print(f"  {field:<12}: {total[field]:>12,}")
         print(f"  {'cache hits':<12}: "

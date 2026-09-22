@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """Collates every track for the SDD evening.
 
-Reads metrics/timeline.json from each track branch, splits the series at a
-given clock time, and writes a table plus an HTML chart that can be
-projected.
+Reads metrics/timeline.json from each track branch and writes a table plus an
+HTML chart that can be projected. Each track declares in metrics/track.json
+whether it used an SDD framework, so runs with and without one can be told
+apart.
 
     git fetch --all
-    python metrics/compare.py --split 2026-11-12T19:23+01:00
+    python metrics/compare.py
 
-Standard library only. No install, no CDN - the chart is inline SVG and
-works without a network.
+Pass --split with a clock time to additionally break each track's numbers into
+before and after that moment.
+
+Standard library only. No install, no CDN - the chart is inline SVG and works
+without a network.
 """
 
 import argparse
@@ -22,6 +26,7 @@ from pathlib import Path
 FIELDS = ("input", "cache_read", "cache_write", "output")
 COLORS = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea", "#0891b2"]
 BRANCH_PREFIXES = ("spor/", "track/")
+NO_FRAMEWORK = "ingen (fri prompting)"
 
 
 def find_track_branches() -> list[str]:
@@ -42,7 +47,7 @@ def find_track_branches() -> list[str]:
     return sorted(set(branches))
 
 
-def track_name(branch: str) -> str:
+def branch_track_name(branch: str) -> str:
     """Strip the remote and the track prefix from a branch name.
 
     Args:
@@ -124,13 +129,13 @@ def hit_rate(sums: dict[str, int]) -> float | None:
     return sums["cache_read"] / denominator if denominator else None
 
 
-def analyse(name: str, timeline: dict, split: datetime) -> dict | None:
-    """Split one track's series at a clock time and summarise both halves.
+def analyse(fallback_name: str, timeline: dict, split: datetime | None) -> dict | None:
+    """Summarise one track, optionally split at a clock time.
 
     Args:
-        name: Track name.
+        fallback_name: Used when timeline.json carries no track name.
         timeline: Parsed timeline.json document.
-        split: Clock time separating before from after.
+        split: Clock time separating before from after, or None.
 
     Returns:
         A summary of the track, or None when it holds no timestamped events.
@@ -144,55 +149,102 @@ def analyse(name: str, timeline: dict, split: datetime) -> dict | None:
         return None
     events.sort(key=lambda e: e["_t"])
 
-    before = [e for e in events if e["_t"] < split]
-    after = [e for e in events if e["_t"] >= split]
+    before = [e for e in events if split and e["_t"] < split]
+    after = [e for e in events if split and e["_t"] >= split]
 
     return {
-        "name": name,
+        "name": timeline.get("track") or fallback_name,
+        "framework": timeline.get("framework") or None,
+        "assistant": timeline.get("assistant") or "claude-code",
         "events": events,
         "count": len(events),
         "before": total(before),
         "after": total(after),
         "total": total(events),
-        "count_before": len(before),
-        "count_after": len(after),
         "start": events[0]["_t"],
         "end": events[-1]["_t"],
     }
 
 
-def table(tracks: list[dict]) -> str:
+def minutes(track: dict) -> int:
+    """Wall-clock minutes between a track's first and last message."""
+    return round((track["end"] - track["start"]).total_seconds() / 60)
+
+
+def rate_text(sums: dict[str, int]) -> str:
+    """Cache hit rate formatted for a table cell."""
+    rate = hit_rate(sums)
+    return f"{rate:.0%}" if rate is not None else "n/a"
+
+
+def table(tracks: list[dict], split: datetime | None) -> str:
     """Render the comparison as a Markdown table.
+
+    Args:
+        tracks: Analysed tracks.
+        split: Clock time, or None when no split was requested.
+
+    Returns:
+        The table as a single string.
+    """
+    if split:
+        rows = [
+            "| Spor | Rammeverk | Svar | Tokens før | Tokens etter | Sum | Cache | Tid |",
+            "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        ]
+        for t in tracks:
+            before, after = sum(t["before"].values()), sum(t["after"].values())
+            rows.append(
+                f"| {t['name']} | {t['framework'] or NO_FRAMEWORK} | {t['count']} | "
+                f"{before:,} | {after:,} | {before + after:,} | "
+                f"{rate_text(t['total'])} | {minutes(t)} min |"
+            )
+    else:
+        rows = [
+            "| Spor | Rammeverk | Svar | Tokens | Cache | Tid |",
+            "| --- | --- | ---: | ---: | ---: | ---: |",
+        ]
+        for t in tracks:
+            rows.append(
+                f"| {t['name']} | {t['framework'] or NO_FRAMEWORK} | {t['count']} | "
+                f"{sum(t['total'].values()):,} | {rate_text(t['total'])} | "
+                f"{minutes(t)} min |"
+            )
+    return "\n".join(rows)
+
+
+def by_framework(tracks: list[dict]) -> str:
+    """Aggregate tracks into framework and no-framework groups.
 
     Args:
         tracks: Analysed tracks.
 
     Returns:
-        The table as a single string.
+        A Markdown table, or an empty string when only one group is present.
     """
+    with_fw = [t for t in tracks if t["framework"]]
+    without = [t for t in tracks if not t["framework"]]
+    if not with_fw or not without:
+        return ""
+
     rows = [
-        "| Track | Replies | Tokens before | Tokens after | Sum | Cache hits | Active time |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Gruppe | Spor | Tokens totalt | Snitt per spor |",
+        "| --- | ---: | ---: | ---: |",
     ]
-    for track in tracks:
-        before = sum(track["before"].values())
-        after = sum(track["after"].values())
-        rate = hit_rate(track["total"])
-        minutes = round((track["end"] - track["start"]).total_seconds() / 60)
-        rows.append(
-            f"| {track['name']} | {track['count']} | {before:,} | {after:,} | "
-            f"{before + after:,} | "
-            f"{f'{rate:.0%}' if rate is not None else 'n/a'} | {minutes} min |"
-        )
+    for label, group in (("Med rammeverk", with_fw), ("Uten rammeverk", without)):
+        summed = sum(sum(t["total"].values()) for t in group)
+        rows.append(f"| {label} | {len(group)} | {summed:,} | {summed // len(group):,} |")
     return "\n".join(rows)
 
 
-def chart(tracks: list[dict], split: datetime, width: int = 960, height: int = 460) -> str:
+def chart(tracks: list[dict], split: datetime | None, width: int = 960, height: int = 460) -> str:
     """Cumulative token usage over time, one line per track, as inline SVG.
+
+    Tracks that used a framework are drawn solid; free prompting is dashed.
 
     Args:
         tracks: Analysed tracks.
-        split: Clock time to mark with a vertical rule.
+        split: Clock time to mark with a vertical rule, or None.
         width: Viewbox width in pixels.
         height: Viewbox height in pixels.
 
@@ -229,7 +281,7 @@ def chart(tracks: list[dict], split: datetime, width: int = 960, height: int = 4
             f'fill="#6b7280">{value / 1000:,.0f}k</text>'
         )
 
-    if t0 <= split <= t1:
+    if split and t0 <= split <= t1:
         sx = x(split)
         parts.append(
             f'<line x1="{sx:.1f}" y1="{top}" x2="{sx:.1f}" '
@@ -241,22 +293,23 @@ def chart(tracks: list[dict], split: datetime, width: int = 960, height: int = 4
 
     for i, track in enumerate(tracks):
         color = COLORS[i % len(COLORS)]
+        dash = '' if track["framework"] else ' stroke-dasharray="8 5"'
         running = 0
         points = []
         for event in track["events"]:
             running += sum(event.get(f, 0) for f in FIELDS)
             points.append(f"{x(event['_t']):.1f},{y(running):.1f}")
-        joined = " ".join(points)
         parts.append(
             f'<polyline fill="none" stroke="{color}" stroke-width="2.5" '
-            f'stroke-linejoin="round" points="{joined}"/>'
+            f'stroke-linejoin="round"{dash} points="{" ".join(points)}"/>'
         )
         ly = top + 20 + i * 22
+        label = f'{track["name"]} ({track["framework"] or "fri"})'
         parts.append(
-            f'<rect x="{width - right - 170}" y="{ly - 9}" width="12" '
+            f'<rect x="{width - right - 220}" y="{ly - 9}" width="12" '
             f'height="12" fill="{color}" rx="2"/>'
-            f'<text x="{width - right - 152}" y="{ly + 2}" fill="#374151">'
-            f'{track["name"]}</text>'
+            f'<text x="{width - right - 202}" y="{ly + 2}" fill="#374151">'
+            f'{label}</text>'
         )
 
     parts.append(
@@ -264,42 +317,52 @@ def chart(tracks: list[dict], split: datetime, width: int = 960, height: int = 4
         f'<text x="{width - right}" y="{height - 14}" text-anchor="end" '
         f'fill="#6b7280">{span / 60:.0f} min</text>'
         f'<text x="{width / 2}" y="{height - 14}" text-anchor="middle" '
-        f'fill="#6b7280">cumulative tokens over time</text>'
+        f'fill="#6b7280">kumulative tokens over tid — stiplet = uten rammeverk</text>'
     )
     parts.append("</svg>")
     return "".join(parts)
 
 
-def render_html(tracks: list[dict], split: datetime) -> str:
+def render_html(tracks: list[dict], split: datetime | None) -> str:
     """Build the projectable single-file report.
 
     Args:
         tracks: Analysed tracks.
-        split: Clock time separating before from after.
+        split: Clock time, or None.
 
     Returns:
         A complete HTML document.
     """
-    html = (
+    def cells(row: str) -> str:
+        return "".join(f"<td>{c.strip()}</td>" for c in row.strip("|").split("|"))
+
+    lines = table(tracks, split).splitlines()
+    head = "".join(f"<th>{c.strip()}</th>" for c in lines[0].strip("|").split("|"))
+    body = "".join(f"<tr>{cells(r)}</tr>" for r in lines[2:])
+
+    groups = by_framework(tracks)
+    group_html = ""
+    if groups:
+        glines = groups.splitlines()
+        ghead = "".join(f"<th>{c.strip()}</th>" for c in glines[0].strip("|").split("|"))
+        gbody = "".join(f"<tr>{cells(r)}</tr>" for r in glines[2:])
+        group_html = (
+            "<h2>Med og uten rammeverk</h2>"
+            f"<table><tr>{ghead}</tr>{gbody}</table>"
+        )
+
+    return (
         "<!doctype html><meta charset='utf-8'>"
-        "<title>SDD evening - comparison</title>"
+        "<title>SDD-fagkveld — sammenligning</title>"
         "<style>body{font-family:system-ui,sans-serif;max-width:1000px;"
         "margin:40px auto;padding:0 20px;color:#111827}"
         "table{border-collapse:collapse;width:100%;margin-top:24px}"
         "th,td{padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right}"
-        "th:first-child,td:first-child{text-align:left}</style>"
-        "<h1>SDD evening</h1>" + chart(tracks, split) +
-        "<table><tr><th>Track</th><th>Replies</th><th>Before</th><th>After</th>"
-        "<th>Sum</th><th>Cache</th></tr>"
+        "th:first-child,td:first-child,th:nth-child(2),td:nth-child(2)"
+        "{text-align:left}h2{margin-top:40px;font-size:18px}</style>"
+        "<h1>SDD-fagkveld</h1>" + chart(tracks, split) +
+        f"<table><tr>{head}</tr>{body}</table>" + group_html
     )
-    for track in tracks:
-        before = sum(track["before"].values())
-        after = sum(track["after"].values())
-        rate = hit_rate(track["total"])
-        html += (f"<tr><td>{track['name']}</td><td>{track['count']}</td>"
-                 f"<td>{before:,}</td><td>{after:,}</td><td>{before + after:,}</td>"
-                 f"<td>{f'{rate:.0%}' if rate is not None else 'n/a'}</td></tr>")
-    return html + "</table>"
 
 
 def main() -> int:
@@ -309,45 +372,74 @@ def main() -> int:
         0 on success, 1 when no track had usable data, 2 on bad arguments.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--split", required=True,
-                        help="ISO timestamp, e.g. 2026-11-12T19:23+01:00")
-    parser.add_argument("--out", default="metrics", help="where the result is written")
+    parser.add_argument(
+        "--split",
+        help="valgfritt ISO-tidspunkt, f.eks. 2026-11-12T19:23+01:00. "
+             "Uten den rapporteres bare totaler per spor.",
+    )
+    parser.add_argument("--out", default="metrics", help="hvor resultatet skrives")
     args = parser.parse_args()
 
-    split = parse_time(args.split)
-    if not split:
-        print("Invalid timestamp.", file=sys.stderr)
-        return 2
+    split = None
+    if args.split:
+        split = parse_time(args.split)
+        if not split:
+            print("Ugyldig tidspunkt.", file=sys.stderr)
+            return 2
 
     branches = find_track_branches()
     if not branches:
-        print("Found no track branches. Did you run git fetch --all?", file=sys.stderr)
+        print("Fant ingen spor-brancher. Kjørte du git fetch --all?", file=sys.stderr)
         return 1
 
     tracks = []
     for branch in branches:
         timeline = load_timeline(branch)
         if not timeline:
-            print(f"  skipping {branch}: no timeline.json", file=sys.stderr)
+            print(f"  hopper over {branch}: ingen metrics/timeline.json", file=sys.stderr)
             continue
-        if result := analyse(track_name(branch), timeline, split):
+        if result := analyse(branch_track_name(branch), timeline, split):
             tracks.append(result)
 
     if not tracks:
-        print("No track had usable data.", file=sys.stderr)
+        print("Ingen spor hadde brukbare data.", file=sys.stderr)
         return 1
+
+    unattributed = [t["name"] for t in tracks if t["framework"] is None]
+    if len(unattributed) > 1:
+        print(
+            f"Merk: {len(unattributed)} spor er registrert uten rammeverk "
+            f"({', '.join(unattributed)}). Er det riktig, eller mangler noen "
+            f"av dem metrics/track.json?",
+            file=sys.stderr,
+        )
+
+    assistants = sorted({t["assistant"] for t in tracks})
+    if len(assistants) > 1:
+        print(
+            f"ADVARSEL: sporene er målt med ulike kodeassistenter "
+            f"({', '.join(assistants)}). Tokentall er IKKE sammenlignbare på "
+            f"tvers av leverandører - cache-skriving faktureres ulikt, og pris "
+            f"per token varierer. Sammenlign innenfor samme assistent, eller "
+            f"bytt målestokk til kroner.",
+            file=sys.stderr,
+        )
 
     tracks.sort(key=lambda t: sum(t["total"].values()))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    markdown = f"# Track comparison\n\nSplit at: {split.isoformat()}\n\n"
-    markdown += table(tracks) + "\n"
+    header = "# Sammenligning av spor\n\n"
+    if split:
+        header += f"Delt ved: {split.isoformat()}\n\n"
+    markdown = header + table(tracks, split) + "\n"
+    if groups := by_framework(tracks):
+        markdown += "\n## Med og uten rammeverk\n\n" + groups + "\n"
     (out / "comparison.md").write_text(markdown, encoding="utf-8")
     (out / "comparison.html").write_text(render_html(tracks, split), encoding="utf-8")
 
-    print(table(tracks))
-    print(f"\nWritten to {out}/comparison.md and {out}/comparison.html")
+    print(markdown)
+    print(f"Skrevet til {out}/comparison.md og {out}/comparison.html")
     return 0
 
 
