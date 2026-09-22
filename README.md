@@ -126,4 +126,15 @@ siden den genereres på nytt ved behov.
 Målingen oppdaterer seg selv: `spor/<navn>/.claude/settings.json` har en
 Stop-hook som kjører etter hvert svar fra agenten.
 
+## Fasilitatornotater
+
+`fasilitator/` inneholder notatene for den som kjører kvelden:
+
+| Fil | Innhold |
+| --- | --- |
+| `fasilitator/vurdering.md` | Sjekklisten kvaliteten vurderes etter, skrevet før noen kode er sett |
+| `fasilitator/torrkjoring.md` | Hvordan måleoppsettet prøvekjøres på et kastbart spor |
+
+Begge ligger åpent — det er ingenting her som er skjult for sporene.
+
 Presentasjonen ligger i `docs/`.
