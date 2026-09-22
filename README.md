@@ -126,15 +126,26 @@ siden den genereres på nytt ved behov.
 Målingen oppdaterer seg selv: `spor/<navn>/.claude/settings.json` har en
 Stop-hook som kjører etter hvert svar fra agenten.
 
+### Å lese tallene
+
+Kvaliteten på det sporene lager går vi gjennom sammen. Tallene er bare den
+ene halvdelen, og to ting er verdt å si høyt før de vises:
+
+**Engangskostnad mot løpende kostnad.** Rammeverk som Agent OS og BMAD
+front-laster arbeid — standarder, produktdokumenter, arkitekturbeslutninger
+— som er ment å betale seg over mange oppgaver. Én greenfield-kveld måler
+investeringen, ikke avkastningen. Blir konklusjonen «seremoni er dyrt», er
+det delvis et artefakt av formatet.
+
+**Rammeverkene må installeres i sporets egen mappe**, ikke i hjemmekatalogen.
+Legges de globalt, havner konfigurasjon og standarder utenfor både git og
+tokenmålingen, og et spor kan arve tilstand fra en tidligere sesjon uten at
+noe i tallene viser det.
+
 ## Fasilitatornotater
 
-`fasilitator/` inneholder notatene for den som kjører kvelden:
-
-| Fil | Innhold |
-| --- | --- |
-| `fasilitator/vurdering.md` | Sjekklisten kvaliteten vurderes etter, skrevet før noen kode er sett |
-| `fasilitator/torrkjoring.md` | Hvordan måleoppsettet prøvekjøres på et kastbart spor |
-
-Begge ligger åpent — det er ingenting her som er skjult for sporene.
+`fasilitator/torrkjoring.md` beskriver hvordan måleoppsettet prøvekjøres på
+et kastbart spor før kvelden. Den ligger åpent — ingenting i dette repoet er
+skjult for sporene.
 
 Presentasjonen ligger i `docs/`.
