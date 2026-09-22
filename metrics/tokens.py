@@ -11,10 +11,12 @@ message is already timestamped.
 Standard library only. No install.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 BUCKETS = (
@@ -222,7 +224,9 @@ def write_summary(
         f"# Token usage - {track}",
         "",
         f"Framework: {framework or 'none (free prompting)'}",
-        f"Generated: {datetime.now(UTC).isoformat(timespec='seconds')}",
+        # timezone.utc, ikke datetime.UTC: Stop-hooken kjorer pa systemets
+        # python3, som pa macOS er 3.9. datetime.UTC krever 3.11.
+        f"Generated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",  # noqa: UP017
         f"First message: {first}",
         f"Last message: {last}",
         f"Replies from the agent: {len(events)}",

@@ -16,6 +16,8 @@ Standard library only. No install, no CDN - the chart is inline SVG and works
 without a network.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import subprocess
