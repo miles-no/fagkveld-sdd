@@ -21,3 +21,8 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Stop-hooken kjorer maleskriptene med systemets python3, som pa macOS er
+# 3.9. datetime.UTC krever 3.11, sa de bruker timezone.utc med vilje.
+"metrics/*.py" = ["UP017"]

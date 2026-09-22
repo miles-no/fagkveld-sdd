@@ -92,6 +92,20 @@ deler samme `.venv` og dermed nøyaktig samme versjoner.
 dette feltet sammenligningen bruker til å skille de to gruppene fra
 hverandre. `assistant` er valgfri og er `claude-code` som standard.
 
+`start` er valgfri og settes når sporet faktisk begynner. Alt som er
+registrert før det tidspunktet holdes utenfor målingen:
+
+```bash
+cd spor/agent-os
+python3 ../../metrics/tokens.py --start-now
+```
+
+Det er slik oppsettet av rammeverket holdes utenfor tallene. Selve
+installasjonen koster uansett ingenting — `tokens.py` teller bare meldinger
+fra kodeassistenten, ikke kommandoer du kjører i terminalen. Men har du
+brukt assistenten i sporkatalogen på forhånd, ligger de meldingene i
+transkripsjonene og telles med til du stempler starten.
+
 **Uten `track.json` måler `tokens.py` ingenting.** Det er med vilje: da
 skriver den heller ikke målefiler i mappen du står i, så repo-roten holder
 seg ren. Tidsserien bygges opp fra transkripsjonene hver gang, så du

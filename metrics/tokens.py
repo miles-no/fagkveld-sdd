@@ -5,8 +5,13 @@ Reconstructs the full token-usage time series from Claude Code session
 transcripts. No checkpoints, nothing to remember along the way - every
 message is already timestamped.
 
-    python metrics/tokens.py            # write timeline.json + summary.md
-    python metrics/tokens.py --quiet    # same, without output (for hooks)
+    python metrics/tokens.py             # write timeline.json + summary.md
+    python metrics/tokens.py --quiet     # same, without output (for hooks)
+    python metrics/tokens.py --start-now # start counting from now, and stop
+
+Framework setup costs tokens that are not part of the work being compared.
+Run --start-now in a track directory when that track actually begins, and
+everything recorded before then is left out.
 
 Standard library only. No install.
 """
@@ -51,24 +56,66 @@ def read_track(out: Path, repo_root: Path) -> tuple[dict, bool]:
         repo_root: Used for the fallback name.
 
     Returns:
-        The track's name, framework and assistant, and whether track.json
-        was actually found.
+        The track's name, framework, assistant and start time, and whether
+        track.json was actually found.
     """
     fallback = {
         "name": repo_root.name,
         "framework": None,
         "assistant": DEFAULT_ASSISTANT,
+        "start": None,
     }
     try:
         doc = json.loads((out / TRACK_FILE).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return fallback, False
     framework = doc.get("framework")
+    start = doc.get("start")
     return {
         "name": str(doc.get("name") or repo_root.name),
         "framework": str(framework) if framework else None,
         "assistant": str(doc.get("assistant") or DEFAULT_ASSISTANT),
+        "start": str(start) if start else None,
     }, True
+
+
+def parse_time(value):
+    """Parse an ISO timestamp, tolerating a trailing 'Z'.
+
+    Args:
+        value: Timestamp string, possibly empty.
+
+    Returns:
+        An aware datetime, or None when unparseable.
+    """
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def drop_before(events: list[dict], start: str | None) -> tuple[list[dict], int]:
+    """Discard everything that happened before the track started.
+
+    Setting up a framework costs tokens that are not part of the work being
+    compared. Stamping a start time in track.json keeps that preparation out
+    of the numbers, no matter how it was done.
+
+    Args:
+        events: Events in chronological order.
+        start: ISO timestamp, or None to keep everything.
+
+    Returns:
+        The kept events, and how many were dropped.
+    """
+    cutoff = parse_time(start)
+    if cutoff is None:
+        return events, 0
+    kept = [e for e in events if (t := parse_time(e.get("time"))) and t >= cutoff]
+    return kept, len(events) - len(kept)
 
 
 def read_events(projects_dir: Path, repo_root: Path) -> list[dict]:
@@ -224,9 +271,7 @@ def write_summary(
         f"# Token usage - {track}",
         "",
         f"Framework: {framework or 'none (free prompting)'}",
-        # timezone.utc, ikke datetime.UTC: Stop-hooken kjorer pa systemets
-        # python3, som pa macOS er 3.9. datetime.UTC krever 3.11.
-        f"Generated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",  # noqa: UP017
+        f"Generated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
         f"First message: {first}",
         f"Last message: {last}",
         f"Replies from the agent: {len(events)}",
@@ -258,6 +303,7 @@ def main() -> int:
         0 on success, 1 when no usable transcript data was found.
     """
     quiet = "--quiet" in sys.argv
+    stamp_start = "--start-now" in sys.argv
 
     repo_root = Path(os.environ.get("SDD_REPO_ROOT", Path.cwd()))
     out = Path(os.environ.get("SDD_METRICS_DIR", repo_root / "metrics"))
@@ -274,6 +320,15 @@ def main() -> int:
             f"no history is lost by waiting.",
             file=sys.stderr,
         )
+        return 0
+
+    if stamp_start:
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        doc = json.loads((out / TRACK_FILE).read_text(encoding="utf-8"))
+        doc["start"] = now
+        (out / TRACK_FILE).write_text(
+            json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(f"{track['name']}: teller fra {now}")
         return 0
 
     if assistant not in READERS:
@@ -300,6 +355,16 @@ def main() -> int:
             print(f"No messages with a cwd under {repo_root}.", file=sys.stderr)
         return 1
 
+    events, dropped = drop_before(events, track["start"])
+    if not events:
+        if not quiet:
+            print(
+                f"Every message predates the start time {track['start']} in "
+                f"{out / TRACK_FILE}. Nothing to measure yet.",
+                file=sys.stderr,
+            )
+        return 1
+
     series, total = build_timeline(events)
 
     (out / "timeline.json").write_text(
@@ -308,6 +373,7 @@ def main() -> int:
                 "track": track["name"],
                 "framework": track["framework"],
                 "assistant": assistant,
+                "start": track["start"],
                 "repo_root": str(repo_root),
                 "events": series,
             },
@@ -324,6 +390,8 @@ def main() -> int:
         print(f"  {'track':<12}: {track['name']}")
         print(f"  {'framework':<12}: {track['framework'] or 'none (free prompting)'}")
         print(f"  {'assistant':<12}: {assistant}")
+        if track["start"]:
+            print(f"  {'from':<12}: {track['start']}  ({dropped} eldre utelatt)")
         for field in FIELDS:
             print(f"  {field:<12}: {total[field]:>12,}")
         print(f"  {'cache hits':<12}: "

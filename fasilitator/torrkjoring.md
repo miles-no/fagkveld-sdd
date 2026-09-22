@@ -92,6 +92,29 @@ No messages with a cwd under .../spor/torrkjoring.
 finnes ikke data ennå». Får du i stedet beskjed om at `track.json` mangler,
 gikk steg 1 galt.
 
+## 3b · Sett opp rammeverket, og stemple så starten
+
+Dette steget er rekkefølgen som avgjør om oppsettet havner i tallene.
+
+```bash
+# 1. installer rammeverket — i sporets mappe, ikke globalt
+#    (kjøres i terminalen, koster ingen tokens)
+
+# 2. sjekk at rammeverket ikke tok Stop-hooken med seg
+grep tokens.py .claude/settings.json
+
+# 3. start klokka for dette sporet
+python3 ../../metrics/tokens.py --start-now
+```
+
+**Forventet:** siste kommando svarer `<spor>: teller fra <tidspunkt>` og
+legger et `start`-felt i `metrics/track.json`. Alt som er registrert før
+det tidspunktet holdes utenfor målingen, også oppsett du gjorde med
+assistenten.
+
+Finner ikke steg 2 noe, har rammeverket overskrevet hooken. Legg den inn
+igjen før du går videre — ellers måles ikke sporet i det hele tatt.
+
 ## 4 · Kjør et kort agentoppdrag
 
 ```bash
@@ -128,7 +151,8 @@ og `Generated:`-linjen ligger **etter** tidspunktet fra steg 4, `track` er
 | --- | --- |
 | Filene finnes ikke | hooken fyrte ikke — kjør `python3 ../../metrics/tokens.py` manuelt og les beskjeden |
 | `repo_root` er repo-roten | du startet assistenten fra roten, ikke fra sporet |
-| Færre hendelser enn svar du fikk | kjør scriptet manuelt; serien bygges opp fra transkripsjonene på nytt, så ingenting er tapt |
+| Færre hendelser enn svar du fikk | forventet hvis du stemplet start i steg 3b — utskriften sier hvor mange eldre som ble utelatt |
+| `Every message predates the start time` | du stemplet start etter at arbeidet var gjort; fjern `start` fra `track.json` og kjør på nytt |
 
 ## 6 · Commit målingen
 
