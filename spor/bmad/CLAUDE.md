@@ -4,11 +4,6 @@ Gjelder dette sporet, og er identiske for alle sporene i prosjektet.
 
 Oppdraget står i [`../../oppgave/krav.md`](../../oppgave/krav.md).
 
-## Stacken
-
-Låst i `pyproject.toml` og `uv.lock` i repo-roten: Python 3.12, FastAPI,
-Pydantic v2, og `sqlite3` fra standardbiblioteket. Ingen nye avhengigheter.
-
 ## Hva vi ønsker
 
 - **Enkelhet framfor fleksibilitet.** Løs oppgaven som står i briefen, ikke
