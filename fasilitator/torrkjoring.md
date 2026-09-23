@@ -133,7 +133,10 @@ lukke vinduet.
 
 ## 5 · Bevis at Stop-hooken fyrte
 
-Hooken er skrevet `2>/dev/null; exit 0` og **feiler helt stille**. Eneste
+Hooken venter tre sekunder i bakgrunnen før den teller, fordi det siste
+svaret skrives til transkripsjonen omtrent samtidig som hooken fyrer. Uten
+ventetiden mangler siste svar i hver tur. Hooken er skrevet
+`2>/dev/null; exit 0` og **feiler helt stille**. Eneste
 pålitelige sjekk er tidsstempler mot tidspunktet du noterte i steg 4:
 
 ```bash
@@ -179,7 +182,7 @@ open metrics/comparison.html
 `compare.py` leser `spor/*/metrics/timeline.json` rett fra disk. I
 tørrkjøringen ligger alt på samme maskin, så her trengs verken merge eller
 pull. På kvelden, med én maskin og én branch per spor, må hvert spor merges
-inn på `main` først — se «Etter kvelden» under.
+inn på `main` først — se `README.md`.
 
 **Forventet:** en tabell med `Spor | Rammeverk | Svar | Tokens | Cache |
 Tid`, der `torrkjoring` står med `ingen (fri prompting)`. De tre andre
@@ -245,33 +248,6 @@ feil fra andre kilder:
 - **`VAR=verdi kommando`** virker ikke. Bruk
   `env SDD_REPO_ROOT=... python3 ../../metrics/tokens.py`.
 - **`$?`** heter `$status`.
-
----
-
-## Etter kvelden
-
-På hver sporsmaskin, fra sporets mappe på branchen `spor/<navn>`:
-
-```bash
-python3 ../../metrics/tokens.py   # oppdater målingen, i tilfelle hooken bommet
-git add spor/<navn>               # koden og metrics/
-git commit -m "<navn>: ferdig"
-git push -u origin spor/<navn>
-```
-
-Merg så hver branch inn på `main`, som PR eller direkte. Hver branch endrer
-bare sin egen mappe, så rekkefølgen spiller ingen rolle.
-
-Når alle fire er merget, fra repo-roten på maskinen som viser tallene:
-
-```bash
-git switch main
-git pull
-python3 metrics/compare.py
-open metrics/comparison.html
-```
-
-Mangler et spor i tabellen, er det ikke merget ennå.
 
 ---
 

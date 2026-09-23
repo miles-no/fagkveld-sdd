@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "(python3 ../../metrics/tokens.py --quiet &) 2>/dev/null; exit 0",
+            "command": "((sleep 3; python3 ../../metrics/tokens.py --quiet) &) 2>/dev/null; exit 0",
             "timeout": 30
           }
         ]
