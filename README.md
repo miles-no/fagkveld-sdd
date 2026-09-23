@@ -71,6 +71,12 @@ hverandre på katalogsti. Startes to spor fra samme mappe, havner
 tokenbruken deres i samme måling, og tallene ser riktige ut selv om de
 ikke er det.
 
+**Bli også værende der.** Målingen knytter hver melding til
+arbeidskatalogen den ble sendt fra, ikke til hvor sesjonen ble startet.
+Gjør agenten `cd` inn i et annet spor underveis, havner de meldingene på
+det sporets regning. Å lese filer andre steder er uproblematisk — det er
+bare `cd` som flytter målingen.
+
 Hver sporkatalog har sin egen `.claude/settings.json` med Stop-hooken, sin
 egen `Makefile`, og sin egen `metrics/`. Avhengighetene er felles: `uv`
 finner `pyproject.toml` i repo-roten fra en undermappe, så alle sporene
