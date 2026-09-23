@@ -385,6 +385,13 @@ def main() -> int:
                 f"{out / TRACK_FILE}. Nothing to measure yet.",
                 file=sys.stderr,
             )
+            if (out / "timeline.json").exists():
+                print(
+                    f"Note: {out / 'timeline.json'} is left over from an "
+                    f"earlier run and no longer reflects this track. Delete it, "
+                    f"or it will be picked up by compare.py.",
+                    file=sys.stderr,
+                )
         return 1
 
     series, total = build_timeline(events)
