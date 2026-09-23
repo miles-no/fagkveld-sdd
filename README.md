@@ -15,6 +15,9 @@ skal vise.
 
 Briefen sporene jobber etter ligger i [`oppgave/krav.md`](oppgave/krav.md).
 
+Husreglene som gjelder alle sporene ligger i
+[`husregler.md`](husregler.md). De settes opp per spor før klokka starter.
+
 ## Kom i gang
 
 ```bash
