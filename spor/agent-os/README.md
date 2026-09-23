@@ -4,9 +4,10 @@ Applikasjonen bygges i denne mappen.
 
 Oppdraget står i [`../../oppgave/krav.md`](../../oppgave/krav.md).
 
-Hold deg i denne mappen. De andre sporene løser samme oppgave, og
-målingen knytter hver melding til arbeidskatalogen den ble sendt fra.
+Hold deg i denne mappen. De andre sporene løser samme oppgave.
+
+Sesjonen må startes her: målingen teller etter hvor sesjonen ble startet,
+så en sesjon startet fra repo-roten måles ikke.
 
 `make install`, `make run APP=<modul>:<variabel>`, `make test` og
-`make lint` kjøres herfra. Avhengighetene er felles med resten av
-prosjektet og er allerede låst.
+`make lint` kjøres herfra.

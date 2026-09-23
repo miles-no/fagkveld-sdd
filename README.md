@@ -71,16 +71,20 @@ hverandre på katalogsti. Startes to spor fra samme mappe, havner
 tokenbruken deres i samme måling, og tallene ser riktige ut selv om de
 ikke er det.
 
-**Bli også værende der.** Målingen knytter hver melding til
-arbeidskatalogen den ble sendt fra, ikke til hvor sesjonen ble startet.
-Gjør agenten `cd` inn i et annet spor underveis, havner de meldingene på
-det sporets regning. Å lese filer andre steder er uproblematisk — det er
-bare `cd` som flytter målingen.
+Målingen teller sesjoner etter **hvor de ble startet**. Alt en sesjon som
+ble startet i sporet gjør, telles for sporet — også om den beveger seg
+underveis. Og en sesjon som ble startet et annet sted telles aldri for
+sporet, selv om den skulle innom.
+
+Konsekvensen er at en sesjon startet fra repo-roten ikke måles i det hele
+tatt, uansett hvor mye den jobber på sporet. Derfor `cd` inn i mappen
+først.
 
 Hver sporkatalog har sin egen `.claude/settings.json` med Stop-hooken, sin
-egen `Makefile`, og sin egen `metrics/`. Avhengighetene er felles: `uv`
-finner `pyproject.toml` i repo-roten fra en undermappe, så alle sporene
-deler samme `.venv` og dermed nøyaktig samme versjoner.
+egen `Makefile`, og sin egen `metrics/`. Avhengighetene er låst i
+`pyproject.toml` og `uv.lock` i repo-roten, og `uv` finner dem fra en
+undermappe — så `make install` fra sporet gir samme versjoner uten at
+sporet trenger et eget prosjekt.
 
 ### Merking
 

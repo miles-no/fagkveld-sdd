@@ -139,22 +139,28 @@ def drop_before(events: list[dict], start: str | None) -> tuple[list[dict], int]
 
 
 def read_events(projects_dir: Path, repo_root: Path) -> list[dict]:
-    """Every assistant message that belonged to this repo, sorted by time.
+    """Every assistant message from sessions started in this track.
 
-    Filters on 'cwd' rather than guessing how Claude Code encoded the repo
-    path into the directory name. Deduplicates on uuid, because the same
-    message can be written several times while streaming.
+    A message counts when the session it belongs to was STARTED inside
+    repo_root - not merely when some shell happened to be standing there.
+    Claude Code records each message's own working directory, so a session
+    started elsewhere that runs `cd` into a track would otherwise be charged
+    to that track. The facilitator's own session is the likeliest culprit.
+
+    Deduplicates on uuid, because the same message can be written several
+    times while streaming.
 
     Args:
         projects_dir: Root of the Claude Code transcript store.
-        repo_root: Only messages with a cwd inside this path are counted.
+        repo_root: Only sessions started inside this path are counted.
 
     Returns:
         Events sorted by timestamp, one per assistant message with usage data.
     """
     repo_root = repo_root.resolve()
     seen: set[str] = set()
-    events: list[dict] = []
+    records: list[dict] = []
+    origin: dict[str, tuple[str, str]] = {}
 
     for path in sorted(projects_dir.rglob("*.jsonl")):
         try:
@@ -174,14 +180,15 @@ def read_events(projects_dir: Path, repo_root: Path) -> list[dict]:
             if rec.get("type") != "assistant":
                 continue
 
+            session = rec.get("sessionId")
             cwd = rec.get("cwd")
-            if not cwd:
+            when = rec.get("timestamp") or ""
+            if not session or not cwd:
                 continue
-            try:
-                if not Path(cwd).resolve().is_relative_to(repo_root):
-                    continue
-            except (OSError, ValueError):
-                continue
+
+            # Where the session was standing when it first spoke.
+            if session not in origin or when < origin[session][0]:
+                origin[session] = (when, cwd)
 
             uuid = rec.get("uuid")
             if uuid and uuid in seen:
@@ -194,13 +201,22 @@ def read_events(projects_dir: Path, repo_root: Path) -> list[dict]:
             if not usage:
                 continue
 
-            events.append({
-                "time": rec.get("timestamp"),
-                "session": rec.get("sessionId"),
+            records.append({
+                "time": when,
+                "session": session,
                 "model": msg.get("model", "unknown"),
                 **{SHORT_NAMES[b]: int(usage.get(b) or 0) for b in BUCKETS},
             })
 
+    mine = set()
+    for session, (_, cwd) in origin.items():
+        try:
+            if Path(cwd).resolve().is_relative_to(repo_root):
+                mine.add(session)
+        except (OSError, ValueError):
+            continue
+
+    events = [r for r in records if r["session"] in mine]
     events.sort(key=lambda e: e["time"] or "")
     return events
 
