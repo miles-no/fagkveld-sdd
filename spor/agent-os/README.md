@@ -1,99 +1,58 @@
 # agent-os
 
-Applikasjonen bygges i denne mappen.
-
-Oppdraget står i [`../../oppgave/krav.md`](../../oppgave/krav.md).
-
-Hold deg i denne mappen. De andre sporene løser samme oppgave.
+Oppdraget: [`../../oppgave/krav.md`](../../oppgave/krav.md). Bygg i denne
+mappen; de andre sporene løser samme oppgave i sine.
 
 ## Før dere starter
 
-For deltakerne, ikke for agenten. Kjøres én gang, fra repo-roten, på
-sporets maskin:
+For deltakerne, ikke agenten. Fra repo-roten:
 
 ```bash
 git switch -c spor/agent-os
 cd spor/agent-os
 make install
-python3 ../../metrics/tokens.py --start-now
-claude
+python3 ../../metrics/tokens.py --start-now   # én gang; ny kjøring flytter starten
+claude                                        # herfra, ellers måles ikke sesjonen
 ```
 
-- `--start-now` starter klokka for sporet. Kjør den **én gang**, rett før
-  dere begynner: kjøres den igjen, flyttes starten, og alt før det nye
-  tidspunktet faller ut av målingen.
-- `claude` må startes fra denne mappen. Målingen teller etter hvor
-  sesjonen ble startet, så en sesjon startet fra repo-roten måles ikke.
-- Commit bare denne mappen (`git add spor/agent-os`), også `metrics/`. Til
-  slutt merges branchen inn på `main`.
+Commit bare `spor/agent-os` (inkludert `metrics/`). Branchen merges inn på
+`main` til slutt.
 
-`make install`, `make run APP=<modul>:<variabel>`, `make test` og
-`make lint` kjøres herfra.
+`make run APP=<modul>:<variabel>`, `make test` og `make lint` kjøres herfra.
 
-## Oppstart med Agent OS
+## Agent OS
 
-Agent OS er installert i `.claude/commands/agent-os/` og `agent-os/`.
-Kommandoene kjøres som slash-kommandoer i Claude Code: `/plan-product`,
-`/discover-standards`, `/index-standards`, `/inject-standards` og
-`/shape-spec`.
+Kommandoene ligger i `.claude/commands/agent-os/`. Standardene i
+`agent-os/standards/` er tomme — prosjektet er greenfield, så de utledes
+fra kravene.
 
-Agent OS kommer **uten standarder** — `agent-os/standards/index.yml` er
-tom. Det er meningen: standardene skal beskrive dette prosjektets måte å
-gjøre ting på. Siden prosjektet er greenfield, finnes det ingen kode å
-hente dem ut fra, så de må utledes fra kravene.
+1. **Produkt.** Svar ut fra kravene; stacken står under «Rammer».
 
-### 1. Produktdokumentasjon
+   ```
+   /plan-product
+   ```
 
-```
-/plan-product
-```
+   Skriver `agent-os/product/mission.md`, `roadmap.md` og `tech-stack.md`.
 
-Svar ut fra [`../../oppgave/krav.md`](../../oppgave/krav.md). Stacken står
-under «Rammer» i kravene. Resultatet havner i `agent-os/product/`
-(`mission.md`, `roadmap.md`, `tech-stack.md`).
+2. **Standarder.** `/discover-standards` leser vanligvis mønstre ut av
+   koden. Det finnes ingen, så pek den mot kravene:
 
-### 2. Standarder utledet fra kravene
+   ```
+   /discover-standards Det finnes ingen kode ennå. Utled standardene fra
+   ../../oppgave/krav.md og agent-os/product/tech-stack.md.
+   ```
 
-`/discover-standards` er laget for å lese mønstre ut av eksisterende kode.
-Her er det ingen, så pek den mot kravene i stedet:
+   Kravene peker på API-form, svar når noe ikke finnes, lagring som tåler
+   omstart, og testing. Hva standardene sier, bestemmer dere. Etter
+   håndredigering: `/index-standards`.
 
-```
-/discover-standards Det finnes ingen kode ennå. Utled standardene fra
-../../oppgave/krav.md og agent-os/product/tech-stack.md i stedet for fra
-kodebasen.
-```
+3. **Spesifikasjon.** Krever plan mode (Shift+Tab):
 
-Kommandoen går gjennom ett område om gangen, spør om begrunnelsen og ber
-om godkjenning før hver fil skrives. Kravene peker selv på noen områder
-det er naturlig å ta stilling til:
+   ```
+   /shape-spec
+   ```
 
-- hvordan API-et er formet (ressurser, operasjoner, statuskoder)
-- hvordan «finnes ikke» og andre feil besvares
-- hvordan data lagres i `sqlite3` så de overlever en omstart
-- hvordan koden testes
+   Første oppgave i planen lagrer spesifikasjonen i
+   `agent-os/specs/<tidsstempel>-<navn>/`. Godkjenn planen for å bygge.
 
-Hva standardene faktisk sier, bestemmer dere. Filene havner i
-`agent-os/standards/<område>/`. Har du skrevet eller endret standarder for
-hånd, oppdater indeksen med:
-
-```
-/index-standards
-```
-
-### 3. Forme spesifikasjonen
-
-`/shape-spec` må kjøres i **plan mode** (Shift+Tab til plan mode er på):
-
-```
-/shape-spec
-```
-
-Den leser produktdokumentene og foreslår relevante standarder fra
-indeksen. Oppgave 1 i planen er alltid å lagre spesifikasjonen i
-`agent-os/specs/<tidsstempel>-<navn>/`. Godkjenn planen, så går
-implementeringen i gang.
-
-### Underveis
-
-`/inject-standards` henter relevante standarder inn i samtalen når du
-jobber utenfor en plan, for eksempel ved en rettelse etter første runde.
+`/inject-standards` henter standardene inn i samtalen utenfor en plan.

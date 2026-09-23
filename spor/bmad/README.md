@@ -1,101 +1,47 @@
 # bmad
 
-Applikasjonen bygges i denne mappen.
-
-Oppdraget står i [`../../oppgave/krav.md`](../../oppgave/krav.md).
-
-Hold deg i denne mappen. De andre sporene løser samme oppgave.
+Oppdraget: [`../../oppgave/krav.md`](../../oppgave/krav.md). Bygg i denne
+mappen; de andre sporene løser samme oppgave i sine.
 
 ## Før dere starter
 
-For deltakerne, ikke for agenten. Kjøres én gang, fra repo-roten, på
-sporets maskin:
+For deltakerne, ikke agenten. Fra repo-roten:
 
 ```bash
 git switch -c spor/bmad
 cd spor/bmad
 make install
-python3 ../../metrics/tokens.py --start-now
-claude
+python3 ../../metrics/tokens.py --start-now   # én gang; ny kjøring flytter starten
+claude                                        # herfra, ellers måles ikke sesjonen
 ```
 
-- `--start-now` starter klokka for sporet. Kjør den **én gang**, rett før
-  dere begynner: kjøres den igjen, flyttes starten, og alt før det nye
-  tidspunktet faller ut av målingen.
-- `claude` må startes fra denne mappen. Målingen teller etter hvor
-  sesjonen ble startet, så en sesjon startet fra repo-roten måles ikke.
-- Commit bare denne mappen (`git add spor/bmad`), også `metrics/`. Til
-  slutt merges branchen inn på `main`.
+Commit bare `spor/bmad` (inkludert `metrics/`). Branchen merges inn på
+`main` til slutt.
 
-`make install`, `make run APP=<modul>:<variabel>`, `make test` og
-`make lint` kjøres herfra.
+`make run APP=<modul>:<variabel>`, `make test` og `make lint` kjøres herfra.
 
-## Oppstart med BMAD
+## BMAD
 
-BMAD (versjon 6) er installert i `_bmad/` (konfigurasjon og skript) og
-`.claude/skills/bmad-*` (skills). Alt BMAD produserer havner i
-`_bmad-output/`: planleggingsdokumenter i `planning-artifacts/`,
-implementeringsspesifikasjoner i `implementation-artifacts/`.
+Skillene ligger i `.claude/skills/bmad-*`, konfigurasjonen i `_bmad/`. Alt
+BMAD skriver, havner i `_bmad-output/`. Kjør `/clear` mellom stegene;
+`/bmad-help` sier hva som er neste.
 
-BMAD jobber med **roller**: analytiker (Mary), produkteier (John),
-arkitekt (Winston), UX (Sally) og utvikler (Amelia). Hver fase har sin
-skill, og fasene bygger på hverandre.
+| Kommando | Gjør |
+| --- | --- |
+| `/bmad-prd` | PRD fra kravene; gi den `../../oppgave/krav.md` |
+| `/bmad-architecture` | tekniske beslutninger |
+| `/bmad-create-epics-and-stories` | historier med akseptansekriterier |
+| `/bmad-sprint-planning` | sjekker planen, lager `sprint-status.yaml` |
+| `/bmad-build` | bygger én historie per kjøring |
 
-### Usikker på hva som er neste steg?
+Valgfritt etterpå: `/bmad-code-review`, `/bmad-qa-generate-e2e-tests`.
 
-```
-/bmad-help
-```
+Kortere vei: `/bmad-spec ../../oppgave/krav.md` lager en `SPEC.md` i
+`_bmad-output/specs/`, og `/bmad-build <sti til SPEC.md>` bygger fra den.
 
-Den ser hva som finnes i `_bmad-output/` og anbefaler neste skill. BMAD
-anbefaler **ny kontekst for hvert steg** — kjør `/clear` mellom dem.
-
-### Standardløpet
-
-De fire første stegene er planlegging, det siste er bygging.
-
-1. **Krav (PRD)** — `/bmad-prd`
-   Gi den [`../../oppgave/krav.md`](../../oppgave/krav.md) som
-   utgangspunkt. Den spør seg frem til et produktkravdokument.
-   (`/bmad-product-brief` kan kjøres før, men kravene dekker det meste av
-   det en brief skal fange.)
-
-2. **Arkitektur** — `/bmad-architecture`
-   Skriver ned de tekniske beslutningene som skal holde delene konsistente.
-   Stacken står under «Rammer» i kravene.
-
-3. **Epics og historier** — `/bmad-create-epics-and-stories`
-   Bryter PRD og arkitektur ned i historier med akseptansekriterier.
-
-4. **Sprintplanlegging** — `/bmad-sprint-planning`
-   Sjekker at planleggingen holder (PASS/CONCERNS/FAIL) og lager
-   `sprint-status.yaml`, som byggingen følger.
-
-5. **Bygging** — `/bmad-build`
-   Én historie om gangen: avklar, planlegg, implementer, review, presenter.
-   Kjør den igjen (i ny kontekst) for neste historie.
-
-Valgfritt etterpå: `/bmad-code-review` for en ekstra review,
-`/bmad-qa-generate-e2e-tests` for tester mot API-et.
-
-### Kortere vei
-
-Vil dere heller hoppe over PRD og epics, kondenserer `/bmad-spec
-../../oppgave/krav.md` kravene til en kort `SPEC.md` i
-`_bmad-output/specs/`. Gi stien til den til `/bmad-build`, så bygger den
-rett fra spesifikasjonen. Det er mindre seremoni, men også mindre av det
-BMAD er kjent for.
-
-### Greit å vite
-
-- `/bmad-build` sjekker git før den starter, og stopper og spør hvis
-  arbeidskatalogen har uncommittede endringer. Stop-hooken oppdaterer
-  `metrics/` etter hvert svar, så det vil nesten alltid være sånn — svar at
-  det er greit å fortsette, eller commit sporets mappe på branchen mellom
-  historiene.
-- BMAD er satt opp til å snakke og skrive engelsk. Skillene leser
-  språket fra to steder, så vil dere ha norsk, må begge endres:
-  `communication_language` og `document_output_language` i
-  `_bmad/custom/config.toml` (legg til `document_output_language` under
-  `[core]`), og de samme to nøklene i `_bmad/core/config.yaml` og
-  `_bmad/bmm/config.yaml`.
+- `/bmad-build` stopper hvis arbeidskatalogen har ucommittede endringer.
+  Stop-hooken skriver `metrics/` etter hvert svar, så det skjer nesten
+  alltid. Svar at det er greit, eller commit mellom historiene.
+- BMAD snakker engelsk. For norsk: sett `communication_language` og
+  `document_output_language` i `_bmad/custom/config.toml`,
+  `_bmad/core/config.yaml` og `_bmad/bmm/config.yaml`.

@@ -1,112 +1,41 @@
 # spec-kit
 
-Applikasjonen bygges i denne mappen.
-
-Oppdraget står i [`../../oppgave/krav.md`](../../oppgave/krav.md).
-
-Hold deg i denne mappen. De andre sporene løser samme oppgave.
+Oppdraget: [`../../oppgave/krav.md`](../../oppgave/krav.md). Bygg i denne
+mappen; de andre sporene løser samme oppgave i sine.
 
 ## Før dere starter
 
-For deltakerne, ikke for agenten. Kjøres én gang, fra repo-roten, på
-sporets maskin:
+For deltakerne, ikke agenten. Fra repo-roten:
 
 ```bash
 git switch -c spor/spec-kit
 cd spor/spec-kit
 make install
-python3 ../../metrics/tokens.py --start-now
-claude
+python3 ../../metrics/tokens.py --start-now   # én gang; ny kjøring flytter starten
+claude                                        # herfra, ellers måles ikke sesjonen
 ```
 
-- `--start-now` starter klokka for sporet. Kjør den **én gang**, rett før
-  dere begynner: kjøres den igjen, flyttes starten, og alt før det nye
-  tidspunktet faller ut av målingen.
-- `claude` må startes fra denne mappen. Målingen teller etter hvor
-  sesjonen ble startet, så en sesjon startet fra repo-roten måles ikke.
-- Commit bare denne mappen (`git add spor/spec-kit`), også `metrics/`. Til
-  slutt merges branchen inn på `main`.
+Commit bare `spor/spec-kit` (inkludert `metrics/`). Branchen merges inn på
+`main` til slutt.
 
-`make install`, `make run APP=<modul>:<variabel>`, `make test` og
-`make lint` kjøres herfra.
+`make run APP=<modul>:<variabel>`, `make test` og `make lint` kjøres herfra.
 
-## Oppstart med Spec Kit
+## Spec Kit
 
-Spec Kit er installert i `.specify/` (maler, skript, konstitusjon) og
-`.claude/skills/speckit-*` (kommandoene). Kommandoene kjøres som
-slash-kommandoer i Claude Code.
+Kommandoene ligger i `.claude/skills/speckit-*`, maler og skript i
+`.specify/`. Hvert steg skriver en fil neste steg leser.
 
-Spec Kit har en fast rekkefølge: **konstitusjon → spesifikasjon → plan →
-oppgaver → implementering**. Hvert steg skriver en fil som neste steg
-leser.
+| Kommando | Gjør |
+| --- | --- |
+| `/speckit-constitution Utled prinsippene fra ../../oppgave/krav.md.` | prosjektets prinsipper |
+| `/speckit-specify <oppdraget>` | `spec.md`: hva og hvorfor, uten tekniske valg |
+| `/speckit-clarify` | valgfri: opptil fem spørsmål, svarene inn i spec |
+| `/speckit-plan` | `plan.md` og designfiler; stacken kommer inn her |
+| `/speckit-tasks` | `tasks.md` |
+| `/speckit-analyze` | valgfri: sjekker at spec, plan og oppgaver henger sammen |
+| `/speckit-implement` | bygger etter `tasks.md` |
 
-### 1. Konstitusjonen
-
-`.specify/memory/constitution.md` er bare en mal med plassholdere. Den
-skal fylles ut først — det er prosjektets prinsipper, og alle senere steg
-sjekker seg mot den:
-
-```
-/speckit-constitution Utled prinsippene fra ../../oppgave/krav.md.
-```
-
-Rammene i kravene (låst stack, ingen nye avhengigheter, data som overlever
-omstart) hører naturlig hjemme her. Hvilke prinsipper ellers — for
-eksempel om testing og enkelhet — bestemmer dere.
-
-### 2. Spesifikasjonen — *hva* og *hvorfor*
-
-```
-/speckit-specify <beskrivelse av oppdraget, eller: se ../../oppgave/krav.md>
-```
-
-Skriver `specs/001-<navn>/spec.md` med brukerhistorier og krav, uten
-tekniske valg. Uklare punkter merkes `[NEEDS CLARIFICATION]`.
-
-Valgfritt, men anbefalt før planen:
-
-```
-/speckit-clarify
-```
-
-Stiller opptil fem målrettede spørsmål og skriver svarene inn i
-spesifikasjonen.
-
-### 3. Planen — *hvordan*
-
-```
-/speckit-plan
-```
-
-Her kommer stacken inn. Skriver `plan.md` og tilhørende designfiler
-(datamodell, API-kontrakter) i samme `specs/`-mappe, og sjekker planen mot
-konstitusjonen.
-
-### 4. Oppgavene
-
-```
-/speckit-tasks
-```
-
-Bryter planen ned i en ordnet `tasks.md`. Valgfritt etterpå:
-
-```
-/speckit-analyze
-```
-
-Sjekker at spesifikasjon, plan og oppgaver henger sammen, uten å endre
-noe.
-
-### 5. Implementering
-
-```
-/speckit-implement
-```
-
-Går gjennom `tasks.md` og bygger. Mangler noe etterpå, finner
-`/speckit-converge` det som ikke er bygget og legger det til som nye
-oppgaver.
-
-`/speckit-checklist` (sjekklister for et område) og
-`/speckit-taskstoissues` (GitHub-issues) finnes også, men trengs ikke i
-kveld.
+- `.specify/memory/constitution.md` er en tom mal og må fylles først. Alle
+  senere steg sjekker seg mot den.
+- Alt havner i `specs/001-<navn>/`.
+- `/speckit-converge` legger det som ikke ble bygget inn som nye oppgaver.
