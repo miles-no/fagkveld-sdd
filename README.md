@@ -106,6 +106,10 @@ fra kodeassistenten, ikke kommandoer du kjører i terminalen. Men har du
 brukt assistenten i sporkatalogen på forhånd, ligger de meldingene i
 transkripsjonene og telles med til du stempler starten.
 
+`tokens.py` finner sporet ved å lete oppover etter `metrics/track.json` fra
+der den kjøres. Den virker altså også om assistenten står i en undermappe
+av sporet, og finner ingenting om den kjøres utenfor et spor.
+
 **Uten `track.json` måler `tokens.py` ingenting.** Det er med vilje: da
 skriver den heller ikke målefiler i mappen du står i, så repo-roten holder
 seg ren. Tidsserien bygges opp fra transkripsjonene hver gang, så du

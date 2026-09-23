@@ -44,6 +44,26 @@ TRACK_FILE = "track.json"
 DEFAULT_ASSISTANT = "claude-code"
 
 
+def find_track_root(start: Path) -> Path | None:
+    """Walk up from a directory looking for the track it belongs to.
+
+    A directory is a track when it holds metrics/track.json. Searching
+    upwards means the hook works no matter where inside the track the
+    assistant happens to stand, and finds nothing when run outside a track.
+
+    Args:
+        start: Directory to start from, usually the working directory.
+
+    Returns:
+        The track's root directory, or None when there is none above start.
+    """
+    current = start.resolve()
+    for directory in [current, *current.parents]:
+        if (directory / "metrics" / TRACK_FILE).is_file():
+            return directory
+    return None
+
+
 def read_track(out: Path, repo_root: Path) -> tuple[dict, bool]:
     """Read the track's identity from metrics/track.json.
 
@@ -305,22 +325,24 @@ def main() -> int:
     quiet = "--quiet" in sys.argv
     stamp_start = "--start-now" in sys.argv
 
-    repo_root = Path(os.environ.get("SDD_REPO_ROOT", Path.cwd()))
+    explicit = os.environ.get("SDD_REPO_ROOT")
+    repo_root = Path(explicit) if explicit else (find_track_root(Path.cwd()) or Path.cwd())
     out = Path(os.environ.get("SDD_METRICS_DIR", repo_root / "metrics"))
-    out.mkdir(parents=True, exist_ok=True)
 
     track, found = read_track(out, repo_root)
     assistant = track["assistant"]
 
     if not found:
         print(
-            f"No {out / TRACK_FILE} - this directory is not a track, so nothing "
-            f"was written. Create the file (see track.example.json) and run "
-            f"again; the series is rebuilt from the transcripts every time, so "
-            f"no history is lost by waiting.",
+            f"No {TRACK_FILE} found in or above {Path.cwd()} - this is not a "
+            f"track, so nothing was written. Create metrics/{TRACK_FILE} (see "
+            f"metrics/track.example.json) and run again; the series is rebuilt "
+            f"from the transcripts every time, so no history is lost by waiting.",
             file=sys.stderr,
         )
         return 0
+
+    out.mkdir(parents=True, exist_ok=True)
 
     if stamp_start:
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
