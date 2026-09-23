@@ -21,7 +21,6 @@ liggende på maskinen etterpå. Tørrkjører du i `spor/bmad`, teller
 ## 0 · Utgangspunkt
 
 ```bash
-cd <repo-rot>
 git status --short
 python3 -V
 ```
@@ -37,14 +36,15 @@ mkdir -p spor/torrkjoring/metrics spor/torrkjoring/.claude
 cp spor/fri/Makefile spor/torrkjoring/
 cp spor/fri/.claude/settings.json spor/torrkjoring/.claude/
 
-cat > spor/torrkjoring/metrics/track.json <<'JSON'
-{
+echo '{
   "name": "torrkjoring",
   "framework": null,
   "assistant": "claude-code"
-}
-JSON
+}' > spor/torrkjoring/metrics/track.json
 ```
+
+(Flerlinjet `echo` i stedet for heredoc: fish støtter ikke `<<EOF`, men
+håndterer flerlinjede strenger i enkle fnutter fint. Virker i bash også.)
 
 `track.json` er det som gjør mappen til et spor. Uten den skriver
 `tokens.py` ingenting i det hele tatt.
@@ -157,7 +157,6 @@ og `Generated:`-linjen ligger **etter** tidspunktet fra steg 4, `track` er
 ## 6 · Commit målingen
 
 ```bash
-cd <repo-rot>
 git add spor/torrkjoring
 git status --short
 ```
@@ -171,7 +170,6 @@ Målefilene er vanlige sporede filer — ingen `-f` er nødvendig.
 ## 7 · Kjør sammenligningen
 
 ```bash
-cd <repo-rot>
 python3 metrics/compare.py
 cat metrics/comparison.md
 open metrics/comparison.html
@@ -237,9 +235,13 @@ avbrutt med Esc eller lukket vindu kan gå glipp av den. Kjør derfor
 `python3 ../../metrics/tokens.py` manuelt fra sporet (uten `--quiet`, så du
 ser tallene) før du committer.
 
-**Fish-syntaks.** `VAR=verdi kommando` virker ikke. Bruk
-`env SDD_REPO_ROOT=... python3 ../../metrics/tokens.py`, og `$status` i
-stedet for `$?`.
+**Fish-syntaks.** Tre ting som ikke virker i fish, og som er lette å kopiere
+feil fra andre kilder:
+
+- **Heredoc** (`cat > fil <<'EOF'`) finnes ikke. Bruk flerlinjet `echo '...'`.
+- **`VAR=verdi kommando`** virker ikke. Bruk
+  `env SDD_REPO_ROOT=... python3 ../../metrics/tokens.py`.
+- **`$?`** heter `$status`.
 
 ---
 
@@ -248,8 +250,6 @@ stedet for `$?`.
 Tørrkjøringen må ikke etterlate spor i kveldens tall.
 
 ```bash
-cd <repo-rot>
-
 # 1) Fjern den kastbare sporkatalogen
 git rm -r --cached spor/torrkjoring 2>/dev/null
 rm -rf spor/torrkjoring
@@ -260,7 +260,8 @@ rm -f metrics/comparison.md metrics/comparison.html
 # 3) Fjern transkripsjonene, ellers kan de telles med hvis et ekte spor
 #    senere kjøres fra samme katalognavn
 ls ~/.claude/projects | grep torrkjoring
-rm -rf ~/.claude/projects/<navnet som dukket opp>
+# slett katalogen linjen over viste:
+rm -rf ~/.claude/projects/KATALOGEN-FRA-LINJEN-OVER
 
 # 4) Sluttsjekk
 git status --short          # ingen rester fra torrkjoring
