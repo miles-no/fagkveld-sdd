@@ -14,7 +14,8 @@ __pycache__/
 *.db
 
 # metrics/timeline.json, metrics/summary.md and metrics/track.json are
-# committed per track - compare.py reads them from disk.
+# committed on each track's branch and merged to main - compare.py reads
+# them from disk.
 # Only the aggregate, which is regenerated on demand, is ignored.
 metrics/comparison.md
 metrics/comparison.html

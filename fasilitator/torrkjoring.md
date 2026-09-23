@@ -161,11 +161,10 @@ git add spor/torrkjoring
 git status --short
 ```
 
-**Bare sporets egen mappe.** På kvelden pusher fire maskiner til samme
-repo. Så lenge hvert spor bare committer sin egen mappe, går
-`git pull --rebase` før push uten konflikter. `git add -A` kan ta med
-filer utenfor sporet, for eksempel en `comparison.md` eller en endring i
-repo-roten, og da begynner sporene å kollidere.
+**Bare sporets egen mappe.** På kvelden merges fire branches inn på
+`main`. Så lenge hver branch bare endrer sin egen mappe, går mergene uten
+konflikter. `git add -A` kan ta med filer utenfor sporet, for eksempel en
+endring i repo-roten, og da begynner sporene å kollidere.
 
 Målefilene er vanlige sporede filer — ingen `-f` er nødvendig.
 
@@ -178,9 +177,9 @@ open metrics/comparison.html
 ```
 
 `compare.py` leser `spor/*/metrics/timeline.json` rett fra disk. I
-tørrkjøringen ligger alt på samme maskin, så her trengs verken pull eller
-push. På kvelden, med én maskin per spor, må hvert spor pushe målingen sin
-og den som kjører sammenligningen pulle først — se «Etter kvelden» under.
+tørrkjøringen ligger alt på samme maskin, så her trengs verken merge eller
+pull. På kvelden, med én maskin og én branch per spor, må hvert spor merges
+inn på `main` først — se «Etter kvelden» under.
 
 **Forventet:** en tabell med `Spor | Rammeverk | Svar | Tokens | Cache |
 Tid`, der `torrkjoring` står med `ingen (fri prompting)`. De tre andre
@@ -206,14 +205,14 @@ i. Startes to spor fra samme mappe, summeres tokenbruken deres under ett
 navn, og tallene ser fullstendig plausible ut. Startes et spor fra
 repo-roten, blir arbeidet umålt.
 
-**Ikke pull mens sporene jobber.** Hvert spor har sin egen maskin og ser
-bare det de andre har pushet. En agent i `spor/bmad` kan lese
-`spor/spec-kit/`, og agenter utforsker. Puller et spor underveis, kan det
-få en ferdig løsning fra et annet spor å lene seg på. Hold alle maskinene
-på samme utgangspunkt til sporene er ferdige.
+**Ikke merg inn på `main` før alle sporene er ferdige.** Hvert spor har
+sin egen branch og ser bare det som ligger på den. En agent i `spor/bmad`
+kan lese `spor/spec-kit/`, og agenter utforsker. Merges et spor inn
+tidlig, og et annet spor henter `main` underveis, kan det få en ferdig
+løsning å lene seg på.
 
 **Commit bare sporets egen mappe.** Hvert spor committer kun
-`git add spor/<navn>`, så pushene fra de fire maskinene ikke kolliderer.
+`git add spor/<navn>`, så de fire branchene kan merges uten konflikter.
 
 **PATH avgjør om hooken virker.** Hooken arver PATH fra skallet assistenten
 ble startet i, og bruker `python3` — ikke uv-miljøet. Skriptene tåler nå
@@ -251,25 +250,28 @@ feil fra andre kilder:
 
 ## Etter kvelden
 
-På hver sporsmaskin, fra sporets mappe:
+På hver sporsmaskin, fra sporets mappe på branchen `spor/<navn>`:
 
 ```bash
 python3 ../../metrics/tokens.py   # oppdater målingen, i tilfelle hooken bommet
-git add spor/<navn>
-git commit -m "<navn>: måling"
-git pull --rebase
-git push
+git add spor/<navn>               # koden og metrics/
+git commit -m "<navn>: ferdig"
+git push -u origin spor/<navn>
 ```
 
-Når alle fire har pushet, fra repo-roten på maskinen som viser tallene:
+Merg så hver branch inn på `main`, som PR eller direkte. Hver branch endrer
+bare sin egen mappe, så rekkefølgen spiller ingen rolle.
+
+Når alle fire er merget, fra repo-roten på maskinen som viser tallene:
 
 ```bash
+git switch main
 git pull
 python3 metrics/compare.py
 open metrics/comparison.html
 ```
 
-Mangler et spor i tabellen, har det ikke pushet ennå.
+Mangler et spor i tabellen, er det ikke merget ennå.
 
 ---
 

@@ -66,9 +66,14 @@ spor/fri/          fri prompting
 **Start kodeassistenten fra sporets egen mappe**, ikke fra repo-roten:
 
 ```bash
+git switch -c spor/agent-os
 cd spor/agent-os
 claude
 ```
+
+Hvert spor kjører på sin egen maskin og sin egen branch, `spor/<navn>`.
+Sporet committer så ofte det vil på branchen sin, og alt merges inn på
+`main` først når sporene er ferdige.
 
 Det er ikke en formalitet. `metrics/tokens.py` skiller sporene fra
 hverandre på katalogsti. Startes to spor fra samme mappe, havner
@@ -145,17 +150,18 @@ Verktøyet ligger ett sted, i `metrics/` i repo-roten, og deles av alle
 sporene — Stop-hooken i hvert spor kaller `../../metrics/tokens.py`.
 Måledataene er derimot per spor og havner i `spor/<navn>/metrics/`.
 
-Hvert spor kjører på sin egen maskin. Når sporene er ferdige, committer og
-pusher hvert spor sin egen mappe (`git add spor/<navn>`, ikke `git add -A`).
+Når sporene er ferdige, committer hvert spor sin egen mappe — koden
+**og** `metrics/` — på branchen sin, og merger den inn på `main`.
 Deretter, fra repo-roten på maskinen som viser tallene:
 
 ```bash
+git switch main
 git pull
 python3 metrics/compare.py
 ```
 
-`compare.py` leser bare det som ligger på disk. Et spor som ikke har
-pushet, er derfor ikke med i tabellen.
+`compare.py` leser bare det som ligger på disk. Et spor som ikke er merget
+inn på `main`, er derfor ikke med i tabellen.
 
 Den leser `spor/*/metrics/timeline.json`, skriver en tabell med en kolonne
 for rammeverk, og en graf der spor uten rammeverk tegnes stiplet.
