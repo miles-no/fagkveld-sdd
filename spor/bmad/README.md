@@ -73,11 +73,9 @@ BMAD er kjent for.
 - `/bmad-build` sjekker git før den starter, og stopper og spør hvis
   arbeidskatalogen har uncommittede endringer. Andre spor jobber i samme
   repo, så det vil skje — svar at det er greit å fortsette.
-- BMAD er satt opp til å snakke og skrive engelsk. Vil dere ha norsk,
-  legg til dette i `_bmad/custom/config.toml`:
-
-  ```toml
-  [core]
-  communication_language = "Norwegian"
-  document_output_language = "Norwegian"
-  ```
+- BMAD er satt opp til å snakke og skrive engelsk. Skillene leser
+  språket fra to steder, så vil dere ha norsk, må begge endres:
+  `communication_language` og `document_output_language` i
+  `_bmad/custom/config.toml` (legg til `document_output_language` under
+  `[core]`), og de samme to nøklene i `_bmad/core/config.yaml` og
+  `_bmad/bmm/config.yaml`.

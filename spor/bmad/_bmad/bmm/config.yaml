@@ -9,7 +9,6 @@ implementation_artifacts: "{project-root}/_bmad-output/implementation-artifacts"
 project_knowledge: "{project-root}/docs"
 
 # Core Configuration Values
-user_name: Steffenetb
 project_name: bmad
 communication_language: English
 document_output_language: English

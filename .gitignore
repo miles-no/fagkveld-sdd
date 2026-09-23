@@ -14,7 +14,10 @@ __pycache__/
 *.db
 
 # metrics/timeline.json, metrics/summary.md and metrics/track.json are
-# committed per track branch - compare.py reads them with git show.
+# committed per track - compare.py reads them from disk.
 # Only the aggregate, which is regenerated on demand, is ignored.
 metrics/comparison.md
 metrics/comparison.html
+
+# BMAD: personlige installasjonssvar (navn m.m.)
+spor/bmad/_bmad/config.user.toml
