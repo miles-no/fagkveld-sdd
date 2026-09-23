@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Spec-driven development — Faggruppe Dataplattform</title>
+<title>Spec-driven development — fagkveld, dataplattform</title>
 
 <!--
   Fagkveld: Spec-driven development
-  Miles AS · Faggruppe Dataplattform
+  Miles AS · faggruppe Dataplattform, innsikt og AI
   8 slides · ca. 17 minutter · norsk bokmål
 
   Navigasjon:  → ↓ mellomrom PageDown = neste
@@ -206,9 +206,23 @@ h2{font-family:var(--serif); font-weight:400; font-size:96px;  line-height:1.08;
   font-family:var(--sans); font-size:26px; font-weight:600; color:var(--red);
 }
 
-/* --- slide 8: kurver ------------------------------------------ */
-.curves{flex:1; display:flex; align-items:center; justify-content:center}
-.curves svg{width:100%; max-width:1440px; height:auto}
+/* --- slide 8: eksperimentet ----------------------------------- */
+.exp{flex:1; display:flex; align-items:center; gap:32px}
+.exp .end{
+  flex:none; background:var(--white); border-radius:8px; padding:30px 44px;
+  font-family:var(--serif); font-size:44px; line-height:1.1; text-align:center;
+  box-shadow:var(--shadow-md);
+}
+.exp .end.key{border:2px solid var(--red); box-shadow:var(--shadow-lg)}
+.exp .fan{flex:none; width:130px; height:360px}
+.lanes{flex:1; display:flex; flex-direction:column; gap:24px}
+.lane{
+  height:72px; border:2px solid var(--burgunder); border-radius:300px;
+  display:flex; align-items:center; justify-content:center; gap:16px;
+  font-family:var(--sans); font-size:38px; font-weight:600; background:var(--white);
+}
+.lane.base{background:var(--burgunder); color:var(--krem); border-color:var(--burgunder)}
+.lane .tag{font-size:26px; font-weight:400; opacity:.65}
 .closing{
   position:absolute; left:128px; bottom:64px;
   font-family:var(--serif); font-size:44px; color:var(--red);
@@ -261,7 +275,7 @@ h2{font-family:var(--serif); font-weight:400; font-size:96px;  line-height:1.08;
   </div>
   <div class="title-foot">
     <div class="title-mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
-    <p class="byline">Steffen Ekeberg Tran-Bråten<br>24. September 2026</p>
+    <p class="byline">Steffen Ekeberg Tran-Bråten<br>24. september 2026</p>
   </div>
 </section>
 <!--
@@ -606,60 +620,83 @@ i akkurat dette tilfellet?
 <!-- ============================ 8 · HYPOTESEN ========================= -->
 <section class="slide" id="s8">
   <div class="mark"><svg viewBox="0 0 620.32 193.08"><use href="#miles"/></svg></div>
-  <h2>Kveldens <span class="em">hypotese</span></h2>
-  <p class="note" style="margin-top:28px">Flere tokens, senere start — men tåler en kravendring bedre.</p>
+  <h2>Kveldens <span class="em">eksperiment</span></h2>
+  <p class="note" style="margin-top:28px">Ett TODO&#8209;API, fra bunnen av. Samme prompt til alle.</p>
 
-  <div class="curves">
-    <svg viewBox="0 0 1100 470" aria-label="To kurver som krysser hverandre etter en kravendring">
-      <g stroke="rgba(69,13,33,.35)" stroke-width="3" fill="none">
-        <path d="M90 40 V420 H1050"/>
+  <div class="exp">
+    <div class="end key">Samme<br>prompt</div>
+
+    <svg class="fan" viewBox="0 0 130 360" aria-label="Prompten går ut til fire kjøringer">
+      <defs>
+        <marker id="fanhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0 0 L10 5 L0 10 z" fill="rgba(69,13,33,.55)"/>
+        </marker>
+      </defs>
+      <g stroke="rgba(69,13,33,.55)" stroke-width="3" fill="none" marker-end="url(#fanhead)">
+        <path d="M0 180 C 70 180, 60 36, 120 36"/>
+        <path d="M0 180 C 70 180, 60 132, 120 132"/>
+        <path d="M0 180 C 70 180, 60 228, 120 228"/>
+        <path d="M0 180 C 70 180, 60 324, 120 324"/>
       </g>
-
-      <path d="M660 60 V420" stroke="#ff303b" stroke-width="3" stroke-dasharray="10 10" fill="none"/>
-      <text x="660" y="40" text-anchor="middle" font-family="DM Sans, Arial, sans-serif"
-            font-size="28" font-weight="600" fill="#ff303b">kravendring</text>
-
-      <path d="M90 372 C 190 236, 300 158, 430 144 C 560 130, 640 196, 760 252 C 860 298, 930 318, 1010 330"
-            fill="none" stroke="#450d21" stroke-width="7" stroke-linecap="round"/>
-      <path d="M90 412 C 230 408, 340 374, 430 314 C 560 234, 700 160, 1010 96"
-            fill="none" stroke="#ff303b" stroke-width="7" stroke-linecap="round"/>
-
-      <text x="1040" y="82" text-anchor="end" font-family="DM Sans, Arial, sans-serif"
-            font-size="32" font-weight="600" fill="#ff303b">Rammeverk</text>
-      <text x="1040" y="378" text-anchor="end" font-family="DM Sans, Arial, sans-serif"
-            font-size="32" font-weight="600" fill="#450d21">Ad hoc</text>
-
-      <text transform="rotate(-90 44 230)" x="44" y="230" text-anchor="middle"
-            font-family="DM Sans, Arial, sans-serif" font-size="26" fill="rgba(69,13,33,.6)">fremdrift</text>
-      <text x="1050" y="456" text-anchor="end"
-            font-family="DM Sans, Arial, sans-serif" font-size="26" fill="rgba(69,13,33,.6)">tid</text>
     </svg>
+
+    <div class="lanes">
+      <div class="lane base">Claude Code <span class="tag">referanse</span></div>
+      <div class="lane">Agent OS</div>
+      <div class="lane">Spec Kit</div>
+      <div class="lane">BMAD</div>
+    </div>
+
+    <svg class="fan" viewBox="0 0 130 360" aria-label="Alle fire ender i samme API">
+      <g stroke="rgba(69,13,33,.55)" stroke-width="3" fill="none">
+        <path d="M10 36 C 70 36, 60 180, 120 180"/>
+        <path d="M10 132 C 70 132, 60 180, 120 180"/>
+        <path d="M10 228 C 70 228, 60 180, 120 180"/>
+        <path d="M10 324 C 70 324, 60 180, 120 180"/>
+      </g>
+      <polygon points="118,172 130,180 118,188" fill="rgba(69,13,33,.55)"/>
+    </svg>
+
+    <div class="end">TODO&#8209;API</div>
   </div>
 
-  <p class="closing">Motbevis den i kveld.</p>
+  <p class="closing">Gjett før vi kjører.</p>
   <div class="pageno">08 / 08</div>
 </section>
 <!--
-SPEAKER NOTES · slide 8 · ca. 2 min + diskusjon
+SPEAKER NOTES · slide 8 · ca. 2 min, så kjører vi
 
-Formuler den som et veddemål, ikke som en konklusjon. Ordrett forslag:
+Rigg det som et forsøk, ikke som en konklusjon. Ordrett forslag:
 
-"Påstanden min er: et spec-rammeverk bruker flere tokens og kommer senere i
-gang enn fri prompting — men når kravene endrer seg, tar det igjen forspranget
-og går forbi. Jeg tror på den. Jeg vil at dere skal rive den ned."
+"Vi bygger et TODO-API fra bunnen av, fire ganger. Én vanlig prompt i Claude
+Code er referansen. Den samme prompten er også input til Agent OS, Spec Kit og
+BMAD — så det er ikke oppgaven som varierer, bare prosessen rundt den."
 
-Tre konkrete måter å angripe den på — gi dem gjerne til gruppene:
-  · Kryssingspunktet: hvor sent kommer det? Hvis det krever tre kravendringer
-    før det lønner seg, er det da relevant for våre oppdrag i det hele tatt?
-  · Gjelder det fortsatt når modellene blir bedre? Kanskje kontekstvinduet
-    spiser hele problemet om et år.
-  · Er "ad hoc" en stråmann? En erfaren utvikler med gode vaner er kanskje
-    ikke ad hoc i det hele tatt.
+Understrek at prompten er identisk. Det er hele kontrollen i forsøket: hvis
+resultatene skiller seg, kommer forskjellen fra rammeverket, ikke fra at noen
+formulerte oppgaven bedre.
 
-Hvis noen har motdata fra eget prosjekt: la dem ta ordet. Det er kvelden.
+La dem gjette FØR vi kjører. Be om en håndsopprekning på hvert spørsmål:
+  · Hvem er først ferdig med noe som kjører?
+  · Hvem bruker flest tokens, og hvor mye mer?
+  · Hvem ender med kode du ville sluppet gjennom review?
 
-Avslutning: foreslå at vi tar samme påstand opp igjen om et halvår med data
-fra faktiske oppdrag i stedet for magefølelse.
+Skriv gjetningene på tavla. Da har vi noe å holde resultatet opp mot, og
+kvelden får en fasit i stedet for en diskusjon.
+
+Agent OS er den interessante i feltet, og det er verdt å si hvorfor. Den er
+bygget for å lese standardene som allerede finnes i en kodebase — men her
+starter vi på et tomt repo, så den har ingenting å lese. Da må den i stedet
+legge standardene selv, og det er nettopp det vi får se. Bruk det som en åpen
+test, ikke som en innvending: blir et tomt repo hjemmebane eller bortebane for
+den? Koble tilbake til landskaps-sliden, der den står utenfor aksen.
+
+OpenSpec er ikke med i kveld. Vi holder feltet på tre pluss referansen, ellers
+rekker vi ikke å se på resultatene.
+
+Hvis tiden holder: kast inn en kravendring etterpå — "nå skal hvert TODO ha en
+eier og kunne deles" — og kjør den mot alle fire. Det er der jeg tror
+forskjellen faktisk vises.
 -->
 
 </div><!-- /#stage -->
