@@ -114,6 +114,10 @@ cd spor/agent-os
 python3 ../../metrics/tokens.py --start-now
 ```
 
+Kjør den **én gang per spor**, på sporets maskin. Den overskriver `start`
+hver gang, så kjøres den igjen midt i sporet, faller alt før det nye
+tidspunktet ut av målingen uten at noe sier fra.
+
 Det er slik oppsettet av rammeverket holdes utenfor tallene. Selve
 installasjonen koster uansett ingenting — `tokens.py` teller bare meldinger
 fra kodeassistenten, ikke kommandoer du kjører i terminalen. Men har du
