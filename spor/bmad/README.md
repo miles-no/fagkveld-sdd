@@ -71,8 +71,9 @@ BMAD er kjent for.
 ### Greit å vite
 
 - `/bmad-build` sjekker git før den starter, og stopper og spør hvis
-  arbeidskatalogen har uncommittede endringer. Andre spor jobber i samme
-  repo, så det vil skje — svar at det er greit å fortsette.
+  arbeidskatalogen har uncommittede endringer. Fra og med den andre
+  historien vil det ofte være sånn — svar at det er greit å fortsette,
+  eller commit sporets mappe mellom historiene.
 - BMAD er satt opp til å snakke og skrive engelsk. Skillene leser
   språket fra to steder, så vil dere ha norsk, må begge endres:
   `communication_language` og `document_output_language` i

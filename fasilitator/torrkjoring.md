@@ -161,9 +161,11 @@ git add spor/torrkjoring
 git status --short
 ```
 
-**Bare sporets egen mappe.** Alle sporene jobber i samme arbeidstre, så
-`git add -A` tar med det de andre driver med. Det er den fellen som vil
-bite på kvelden.
+**Bare sporets egen mappe.** På kvelden pusher fire maskiner til samme
+repo. Så lenge hvert spor bare committer sin egen mappe, går
+`git pull --rebase` før push uten konflikter. `git add -A` kan ta med
+filer utenfor sporet, for eksempel en `comparison.md` eller en endring i
+repo-roten, og da begynner sporene å kollidere.
 
 Målefilene er vanlige sporede filer — ingen `-f` er nødvendig.
 
@@ -175,8 +177,10 @@ cat metrics/comparison.md
 open metrics/comparison.html
 ```
 
-Ingen `git fetch`, ingen push: `compare.py` leser
-`spor/*/metrics/timeline.json` rett fra disk.
+`compare.py` leser `spor/*/metrics/timeline.json` rett fra disk. I
+tørrkjøringen ligger alt på samme maskin, så her trengs verken pull eller
+push. På kvelden, med én maskin per spor, må hvert spor pushe målingen sin
+og den som kjører sammenligningen pulle først — se «Etter kvelden» under.
 
 **Forventet:** en tabell med `Spor | Rammeverk | Svar | Tokens | Cache |
 Tid`, der `torrkjoring` står med `ingen (fri prompting)`. De tre andre
@@ -202,14 +206,14 @@ i. Startes to spor fra samme mappe, summeres tokenbruken deres under ett
 navn, og tallene ser fullstendig plausible ut. Startes et spor fra
 repo-roten, blir arbeidet umålt.
 
-**Sporene ser hverandre.** Alle jobber i samme arbeidstre. En agent i
-`spor/bmad` kan lese `spor/spec-kit/`, og agenter utforsker. Kommer et spor
-sent i gang, kan det finne en ferdig løsning å lene seg på. Vil du unngå
-det, må sporene kjøre samtidig — ellers er det en kjent egenskap ved
-oppsettet, ikke en overraskelse.
+**Ikke pull mens sporene jobber.** Hvert spor har sin egen maskin og ser
+bare det de andre har pushet. En agent i `spor/bmad` kan lese
+`spor/spec-kit/`, og agenter utforsker. Puller et spor underveis, kan det
+få en ferdig løsning fra et annet spor å lene seg på. Hold alle maskinene
+på samme utgangspunkt til sporene er ferdige.
 
-**`git add -A` tar med andres arbeid.** Hvert spor committer kun
-`git add spor/<navn>`.
+**Commit bare sporets egen mappe.** Hvert spor committer kun
+`git add spor/<navn>`, så pushene fra de fire maskinene ikke kolliderer.
 
 **PATH avgjør om hooken virker.** Hooken arver PATH fra skallet assistenten
 ble startet i, og bruker `python3` — ikke uv-miljøet. Skriptene tåler nå
@@ -242,6 +246,30 @@ feil fra andre kilder:
 - **`VAR=verdi kommando`** virker ikke. Bruk
   `env SDD_REPO_ROOT=... python3 ../../metrics/tokens.py`.
 - **`$?`** heter `$status`.
+
+---
+
+## Etter kvelden
+
+På hver sporsmaskin, fra sporets mappe:
+
+```bash
+python3 ../../metrics/tokens.py   # oppdater målingen, i tilfelle hooken bommet
+git add spor/<navn>
+git commit -m "<navn>: måling"
+git pull --rebase
+git push
+```
+
+Når alle fire har pushet, fra repo-roten på maskinen som viser tallene:
+
+```bash
+git pull
+python3 metrics/compare.py
+open metrics/comparison.html
+```
+
+Mangler et spor i tabellen, har det ikke pushet ennå.
 
 ---
 
