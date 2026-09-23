@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -222,6 +223,33 @@ def by_framework(tracks: list[dict]) -> str:
     return "\n".join(rows)
 
 
+def nice_step(span: float, ticks: int) -> float:
+    """A round step (1, 2 or 5 times a power of ten) giving about `ticks` steps.
+
+    Args:
+        span: The range the axis has to cover.
+        ticks: Roughly how many steps the axis should have.
+
+    Returns:
+        The step size.
+    """
+    raw = max(span, 1) / ticks
+    power = 10 ** math.floor(math.log10(raw))
+    for factor in (1, 2, 5, 10):
+        if raw <= factor * power:
+            return factor * power
+    return 10 * power
+
+
+def token_label(value: float) -> str:
+    """Short axis label: 0, 500k, 1,5 M."""
+    if value == 0:
+        return "0"
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:g} M".replace(".", ",")
+    return f"{value / 1000:,.0f}k"
+
+
 def chart(tracks: list[dict], split: datetime | None, width: int = 960, height: int = 460) -> str:
     """Cumulative token usage over time, one line per track, as inline SVG.
 
@@ -243,7 +271,8 @@ def chart(tracks: list[dict], split: datetime | None, width: int = 960, height: 
     t0 = min(t["start"] for t in tracks)
     t1 = max(t["end"] for t in tracks)
     span = max((t1 - t0).total_seconds(), 1)
-    peak = max(sum(t["total"].values()) for t in tracks) or 1
+    step = nice_step(max(sum(t["total"].values()) for t in tracks), 6)
+    peak = math.ceil(max(sum(t["total"].values()) for t in tracks) / step) * step or 1
 
     def x(when: datetime) -> float:
         return left + (when - t0).total_seconds() / span * plot_w
@@ -256,15 +285,27 @@ def chart(tracks: list[dict], split: datetime | None, width: int = 960, height: 
         f'font-family="system-ui, sans-serif" font-size="13">'
     ]
 
-    for i in range(5):
-        value = peak * i / 4
+    for i in range(round(peak / step) + 1):
+        value = step * i
         gy = y(value)
         parts.append(
             f'<line x1="{left}" y1="{gy:.1f}" x2="{width - right}" '
             f'y2="{gy:.1f}" stroke="#e5e7eb"/>'
             f'<text x="{left - 10}" y="{gy + 4:.1f}" text-anchor="end" '
-            f'fill="#6b7280">{value / 1000:,.0f}k</text>'
+            f'fill="#6b7280">{token_label(value)}</text>'
         )
+
+    minute_step = max(nice_step(span / 60, 8), 5)
+    minute = 0
+    while minute * 60 <= span:
+        mx = left + minute * 60 / span * plot_w
+        parts.append(
+            f'<line x1="{mx:.1f}" y1="{top + plot_h}" x2="{mx:.1f}" '
+            f'y2="{top + plot_h + 5}" stroke="#9ca3af"/>'
+            f'<text x="{mx:.1f}" y="{top + plot_h + 20}" text-anchor="middle" '
+            f'fill="#6b7280">{minute:g} min</text>'
+        )
+        minute += minute_step
 
     if split and t0 <= split <= t1:
         sx = x(split)
@@ -288,20 +329,18 @@ def chart(tracks: list[dict], split: datetime | None, width: int = 960, height: 
             f'<polyline fill="none" stroke="{color}" stroke-width="2.5" '
             f'stroke-linejoin="round"{dash} points="{" ".join(points)}"/>'
         )
+        # Top left: cumulative lines start low, so that corner stays clear.
         ly = top + 20 + i * 22
-        label = f'{track["name"]} ({track["framework"] or "fri"})'
+        label = f'{track["name"]} ({track["framework"] or "uten rammeverk"})'
         parts.append(
-            f'<rect x="{width - right - 220}" y="{ly - 9}" width="12" '
+            f'<rect x="{left + 16}" y="{ly - 9}" width="12" '
             f'height="12" fill="{color}" rx="2"/>'
-            f'<text x="{width - right - 202}" y="{ly + 2}" fill="#374151">'
+            f'<text x="{left + 34}" y="{ly + 2}" fill="#374151">'
             f'{label}</text>'
         )
 
     parts.append(
-        f'<text x="{left}" y="{height - 14}" fill="#6b7280">0 min</text>'
-        f'<text x="{width - right}" y="{height - 14}" text-anchor="end" '
-        f'fill="#6b7280">{span / 60:.0f} min</text>'
-        f'<text x="{width / 2}" y="{height - 14}" text-anchor="middle" '
+        f'<text x="{width / 2}" y="{height - 6}" text-anchor="middle" '
         f'fill="#6b7280">kumulative tokens over tid — stiplet = uten rammeverk</text>'
     )
     parts.append("</svg>")
