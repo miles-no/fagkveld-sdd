@@ -18,6 +18,8 @@ dev = [
 
 [tool.ruff]
 line-length = 100
+# Rammeverkenes egne filer (BMAD sine skript) er ikke sporenes kode.
+extend-exclude = ["**/_bmad", "**/.claude", "**/.specify"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
