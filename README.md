@@ -15,9 +15,9 @@ skal vise.
 
 Briefen sporene jobber etter ligger i [`oppgave/krav.md`](oppgave/krav.md).
 
-Husreglene ligger som `CLAUDE.md` i hver sporkatalog og er like for alle.
-[`husregler.md`](husregler.md) forklarer hvordan de i tillegg legges inn i
-hvert rammeverks egen form under oppsettet.
+Utover briefen får sporene ingen felles regler. `CLAUDE.md` i hver
+sporkatalog sier bare hvor briefen ligger, at organiseringen er sporets
+eget valg, og at sesjonen hører hjemme i den mappen.
 
 ## Kom i gang
 
