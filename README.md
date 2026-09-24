@@ -11,12 +11,12 @@ ingen felles regler.
 
 ## Sporene
 
-| Mappe | Rammeverk | Branch |
-| --- | --- | --- |
-| `spor/agent-os/` | Agent OS | `spor/agent-os` |
-| `spor/spec-kit/` | Spec Kit | `spor/spec-kit` |
-| `spor/bmad/` | BMAD | `spor/bmad` |
-| `spor/fri/` | ingen | `spor/fri` |
+| Mappe            | Rammeverk | Branch          |
+| ---------------- | --------- | --------------- |
+| `spor/agent-os/` | Agent OS  | `spor/agent-os` |
+| `spor/spec-kit/` | Spec Kit  | `spor/spec-kit` |
+| `spor/bmad/`     | BMAD      | `spor/bmad`     |
+| `spor/fri/`      | ingen     | `spor/fri`      |
 
 Hvert spor har egen maskin og egen branch, og oppstarten står i sporets
 `README.md`. Branchene merges inn på `main` når alle sporene er ferdige.
@@ -39,11 +39,11 @@ Kjøres fra repo-roten eller et spor. Avhengighetene er låst i
 
 ## Måling
 
-| Fil | Innhold |
-| --- | --- |
-| `metrics/tokens.py` | leser transkripsjonene, skriver sporets `timeline.json` og `summary.md` |
-| `metrics/compare.py` | leser alle `spor/*/metrics/timeline.json`, skriver `comparison.md`/`.html` |
-| `spor/<navn>/metrics/track.json` | sporets navn, rammeverk og start |
+| Fil                              | Innhold                                                                    |
+| -------------------------------- | -------------------------------------------------------------------------- |
+| `metrics/tokens.py`              | leser transkripsjonene, skriver sporets `timeline.json` og `summary.md`    |
+| `metrics/compare.py`             | leser alle `spor/*/metrics/timeline.json`, skriver `comparison.md`/`.html` |
+| `spor/<navn>/metrics/track.json` | sporets navn, rammeverk og start                                           |
 
 Stop-hooken i `spor/<navn>/.claude/settings.json` kjører `tokens.py` etter
 hvert svar. Uten `track.json` måler `tokens.py` ingenting.
