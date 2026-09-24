@@ -1,5 +1,6 @@
 {
   "name": "agent-os",
   "framework": "Agent OS",
-  "assistant": "claude-code"
+  "assistant": "claude-code",
+  "start": "2026-09-24T16:12:16+00:00"
 }

@@ -1,2 +1,19 @@
 # Agent OS Standards Index
 
+api:
+  errors:
+    description: Hvordan manglende ressurser og valideringsfeil besvares
+  routes:
+    description: URL-form, verb, statuskoder og svarformat for lister og gjøremål
+
+database:
+  sqlite:
+    description: sqlite3-bruk, skjema, fremmednøkler og varighet på disk
+
+global:
+  structure:
+    description: Lagdeling, filplassering og navngiving
+
+testing:
+  api-tests:
+    description: pytest mot HTTP, isolert database per test, dekning av 404-tilfeller
