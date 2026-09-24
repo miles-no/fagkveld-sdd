@@ -59,9 +59,9 @@ overskriver `start` hver gang, så den kjøres én gang per spor.
 Når alle sporene er merget:
 
 ```bash
-git switch main && git pull
-python3 metrics/compare.py                 # tabell og graf
-python3 metrics/compare.py --split <ISO>   # før/etter et klokkeslett
+git switch main
+make compare                  # pull, tabell og graf
+make compare SPLIT=<ISO-tid>  # i tillegg før/etter et klokkeslett
 ```
 
 Spor som ikke er merget, mangler i tabellen.

@@ -1,4 +1,4 @@
-.PHONY: install run test lint
+.PHONY: install run test lint compare
 
 install:
 	uv sync
@@ -12,3 +12,9 @@ test:
 
 lint:
 	uv run ruff check .
+
+compare:
+	@[ "$$(git branch --show-current)" = main ] || { echo "Bytt til main først: git switch main"; exit 1; }
+	git pull --ff-only
+	python3 metrics/compare.py $(if $(SPLIT),--split $(SPLIT))
+	@command -v open >/dev/null && open metrics/comparison.html || echo "Åpne metrics/comparison.html"
