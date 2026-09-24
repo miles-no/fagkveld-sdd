@@ -39,3 +39,18 @@ Kommandoene ligger i `.claude/skills/speckit-*`, maler og skript i
   senere steg sjekker seg mot den.
 - Alt havner i `specs/001-<navn>/`.
 - `/speckit-converge` legger det som ikke ble bygget inn som nye oppgaver.
+
+## Appen
+
+Kildekoden ligger i `todo/`, spesifikasjonene i `specs/001-todo-lists-api/`.
+
+```bash
+make run APP=todo.main:app   # kjører på http://127.0.0.1:8000, docs på /docs
+make test
+make lint
+```
+
+Dataene ligger i en SQLite-fil på `data/todo.db`, som lages ved oppstart.
+Stien er løst ut fra pakkemappa, ikke fra der du står, så appen treffer samme
+fil uansett hvor den startes fra. `TODO_DB_PATH` overstyrer den — testene
+bruker det til å få hver sin ferske fil.
