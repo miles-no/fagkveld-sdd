@@ -1,5 +1,6 @@
 {
   "name": "fri",
   "framework": null,
-  "assistant": "claude-code"
+  "assistant": "claude-code",
+  "start": "2026-09-24T15:34:38+00:00"
 }
