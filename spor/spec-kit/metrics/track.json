@@ -1,5 +1,6 @@
 {
   "name": "spec-kit",
   "framework": "Spec Kit",
-  "assistant": "claude-code"
+  "assistant": "claude-code",
+  "start": "2026-09-24T15:34:41+00:00"
 }
